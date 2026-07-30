@@ -84,7 +84,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         _isLoading = false;
         _tocEntries = TocEntry.fromMarkdown(content);
       });
-      await windowManager.setTitle('VeloxMD – ${p.basename(path)}');
+      await windowManager.setTitle(p.basename(path));
     } on FileServiceException catch (e) {
       setState(() {
         _isLoading = false;
