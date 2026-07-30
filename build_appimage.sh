@@ -13,6 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_MODE="release"
 ARCH="$(uname -m)"
 APP_NAME="veloxmd"
+OUTPUT_NAME="VeloxMD"
 APP_VERSION="$(grep '^version:' "$SCRIPT_DIR/pubspec.yaml" | awk '{print $2}' | cut -d+ -f1)"
 
 # Parse args
@@ -30,7 +31,7 @@ done
 BUNDLE_DIR="$SCRIPT_DIR/build/linux/x64/$BUILD_MODE/bundle"
 OUTPUT_DIR="$SCRIPT_DIR/dist"
 APPDIR="$OUTPUT_DIR/${APP_NAME}.AppDir"
-APPIMAGE_OUT="$OUTPUT_DIR/${APP_NAME}-${APP_VERSION}-${ARCH}.AppImage"
+APPIMAGE_OUT="$OUTPUT_DIR/${OUTPUT_NAME}-${APP_VERSION}-${ARCH}.AppImage"
 
 # ── 1. Flutter build ────────────────────────────────────────────────────────
 echo "▶ Building Flutter Linux ($BUILD_MODE)…"
