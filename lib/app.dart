@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 import 'screens/viewer_screen.dart';
 
 class VeloxMDApp extends StatefulWidget {
@@ -56,13 +57,13 @@ class _VeloxMDAppState extends State<VeloxMDApp> {
       darkTheme: _buildDarkTheme(),
       shortcuts: {
         ...WidgetsApp.defaultShortcuts,
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyQ):
+        const SingleActivator(LogicalKeyboardKey.keyQ, control: true):
             const _QuitIntent(),
       },
       actions: {
         ...WidgetsApp.defaultActions,
         _QuitIntent: CallbackAction<_QuitIntent>(
-          onInvoke: (_) => SystemNavigator.pop(),
+          onInvoke: (_) => windowManager.close(),
         ),
       },
       home: ViewerScreen(

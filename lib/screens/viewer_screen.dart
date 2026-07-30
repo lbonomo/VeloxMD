@@ -118,13 +118,13 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   // ---------------------------------------------------------------------------
 
   Map<ShortcutActivator, Intent> get _shortcuts => {
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyO):
+        const SingleActivator(LogicalKeyboardKey.keyO, control: true):
             const _OpenFileIntent(),
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyR):
+        const SingleActivator(LogicalKeyboardKey.keyR, control: true):
             const _ReloadIntent(),
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyT):
+        const SingleActivator(LogicalKeyboardKey.keyT, control: true):
             const _ToggleTocIntent(),
-        LogicalKeySet(LogicalKeyboardKey.f5): const _ReloadIntent(),
+        const SingleActivator(LogicalKeyboardKey.f5): const _ReloadIntent(),
       };
 
   Map<Type, Action<Intent>> get _actions => {
