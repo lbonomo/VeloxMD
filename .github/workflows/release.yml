@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-appimage:
+    name: Build AppImage (Linux x86_64)
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: write   # needed to upload release assets
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev libglib2.0-dev libgio2.0-cil-dev \
+            libblkid-dev libfuse2 fuse \
+            wget
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.x'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Linux release bundle
+        run: flutter build linux --release
+
+      - name: Download appimagetool
+        run: |
+          mkdir -p dist
+          wget -q -O dist/appimagetool-x86_64.AppImage \
+            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x dist/appimagetool-x86_64.AppImage
+
+      - name: Assemble AppDir
+        run: |
+          APP_NAME="veloxmd"
+          APP_VERSION="${{ github.event.release.tag_name }}"
+          BUNDLE_DIR="build/linux/x64/release/bundle"
+          APPDIR="dist/${APP_NAME}.AppDir"
+
+          mkdir -p "$APPDIR/usr/bin" \
+                   "$APPDIR/usr/lib" \
+                   "$APPDIR/usr/share/applications" \
+                   "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+
+          # Flutter bundle
+          cp -r "$BUNDLE_DIR/." "$APPDIR/usr/"
+          ln -sf "../${APP_NAME}" "$APPDIR/usr/bin/${APP_NAME}"
+
+          # Desktop file
+          cp linux/runner/resources/${APP_NAME}.desktop "$APPDIR/"
+          cp linux/runner/resources/${APP_NAME}.desktop "$APPDIR/usr/share/applications/"
+
+          # Icon (use a placeholder if none exists in assets)
+          ICON_SRC=""
+          for candidate in assets/icon.png assets/icons/icon.png linux/runner/resources/${APP_NAME}.png; do
+            if [[ -f "$candidate" ]]; then ICON_SRC="$candidate"; break; fi
+          done
+          if [[ -n "$ICON_SRC" ]]; then
+            cp "$ICON_SRC" "$APPDIR/${APP_NAME}.png"
+            cp "$ICON_SRC" "$APPDIR/usr/share/icons/hicolor/256x256/apps/${APP_NAME}.png"
+          else
+            printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82' \
+              > "$APPDIR/${APP_NAME}.png"
+            cp "$APPDIR/${APP_NAME}.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/${APP_NAME}.png"
+          fi
+
+          # AppRun launcher
+          cat > "$APPDIR/AppRun" <<'EOF'
+          #!/bin/sh
+          SELF_DIR="$(dirname "$(readlink -f "$0")")"
+          export LD_LIBRARY_PATH="$SELF_DIR/usr/lib:${LD_LIBRARY_PATH:-}"
+          exec "$SELF_DIR/usr/veloxmd" "$@"
+          EOF
+          chmod +x "$APPDIR/AppRun"
+
+          echo "APPIMAGE_OUT=dist/${APP_NAME}-${APP_VERSION}-x86_64.AppImage" >> "$GITHUB_ENV"
+          echo "APPDIR=$APPDIR" >> "$GITHUB_ENV"
+
+      - name: Package AppImage
+        run: |
+          ARCH=x86_64 dist/appimagetool-x86_64.AppImage --no-appstream \
+            "$APPDIR" "$APPIMAGE_OUT"
+
+      - name: Upload AppImage to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.APPIMAGE_OUT }}
