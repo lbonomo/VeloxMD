@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Install system dependencies
         run: |
@@ -26,11 +26,19 @@ jobs:
             wget
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.x'
-          channel: stable
-          cache: true
+        run: |
+          FLUTTER_VERSION="3.22.3"
+          FLUTTER_ARCHIVE="flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+          FLUTTER_URL="https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/${FLUTTER_ARCHIVE}"
+
+          mkdir -p "$HOME/.local"
+          wget -q -O "/tmp/${FLUTTER_ARCHIVE}" "$FLUTTER_URL"
+          tar -xf "/tmp/${FLUTTER_ARCHIVE}" -C "$HOME/.local"
+
+          echo "$HOME/.local/flutter/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/flutter/bin:$HOME/.local/flutter/bin/cache/dart-sdk/bin:$PATH"
+          flutter --version
 
       - name: Get dependencies
         run: flutter pub get
@@ -93,10 +101,12 @@ jobs:
 
       - name: Package AppImage
         run: |
+          export APPIMAGE_EXTRACT_AND_RUN=1
           ARCH=x86_64 dist/appimagetool-x86_64.AppImage --no-appstream \
             "$APPDIR" "$APPIMAGE_OUT"
 
       - name: Upload AppImage to release
-        uses: softprops/action-gh-release@v2
+        if: ${{ env.ACT != 'true' }}
+        uses: softprops/action-gh-release@v1
         with:
           files: ${{ env.APPIMAGE_OUT }}

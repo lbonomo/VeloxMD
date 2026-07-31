@@ -60,7 +60,7 @@ class MarkdownViewer extends StatelessWidget {
         ? theme.colorScheme.surfaceContainerHighest
         : const Color(0xFFF6F8FA);
     final blockquoteBorderColor = isDark
-        ? theme.colorScheme.primary.withValues(alpha: 0.6)
+        ? theme.colorScheme.primary.withOpacity(0.6)
         : theme.colorScheme.primary;
 
     return MarkdownStyleSheet.fromTheme(theme).copyWith(
@@ -118,7 +118,7 @@ class MarkdownViewer extends StatelessWidget {
         border: Border(
           left: BorderSide(color: blockquoteBorderColor, width: 4),
         ),
-        color: blockquoteBorderColor.withValues(alpha: 0.08),
+        color: blockquoteBorderColor.withOpacity(0.08),
       ),
       blockquotePadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       horizontalRuleDecoration: BoxDecoration(
@@ -139,7 +139,7 @@ class MarkdownViewer extends StatelessWidget {
       a: bodyFont.copyWith(
         color: theme.colorScheme.primary,
         decoration: TextDecoration.underline,
-        decorationColor: theme.colorScheme.primary.withValues(alpha: 0.5),
+        decorationColor: theme.colorScheme.primary.withOpacity(0.5),
       ),
       listBullet: bodyFont.copyWith(
         fontSize: 16,
