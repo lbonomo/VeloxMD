@@ -107,7 +107,7 @@ jobs:
             "$APPDIR" "$APPIMAGE_OUT"
 
       - name: Upload AppImage to release
-        if: ${{ env.ACT != 'true' }}
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
           files: ${{ env.APPIMAGE_OUT }}
@@ -158,7 +158,7 @@ jobs:
           echo "DEB_OUT=$DEB_FILE" >> "$GITHUB_ENV"
 
       - name: Upload .deb to release
-        if: ${{ env.ACT != 'true' }}
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
           files: ${{ env.DEB_OUT }}
