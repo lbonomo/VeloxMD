@@ -3,6 +3,7 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   build-appimage:
@@ -110,3 +111,54 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: ${{ env.APPIMAGE_OUT }}
+
+  build-deb:
+    name: Build Debian package (Linux x86_64)
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev libglib2.0-dev \
+            libblkid-dev dpkg \
+            wget
+
+      - name: Set up Flutter
+        run: |
+          FLUTTER_VERSION="3.22.3"
+          FLUTTER_ARCHIVE="flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+          FLUTTER_URL="https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/${FLUTTER_ARCHIVE}"
+
+          mkdir -p "$HOME/.local"
+          wget -q -O "/tmp/${FLUTTER_ARCHIVE}" "$FLUTTER_URL"
+          tar -xf "/tmp/${FLUTTER_ARCHIVE}" -C "$HOME/.local"
+
+          echo "$HOME/.local/flutter/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/flutter/bin:$HOME/.local/flutter/bin/cache/dart-sdk/bin:$PATH"
+          flutter --version
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build .deb package
+        run: |
+          chmod +x build_deb.sh
+          ./build_deb.sh --release
+          DEB_FILE=$(ls dist/*.deb | head -1)
+          echo "DEB_OUT=$DEB_FILE" >> "$GITHUB_ENV"
+
+      - name: Upload .deb to release
+        if: ${{ env.ACT != 'true' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ env.DEB_OUT }}
