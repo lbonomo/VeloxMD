@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 class VeloxAboutDialog extends StatelessWidget {
   const VeloxAboutDialog({super.key});
 
-  static const String version = '0.4.0';
+  static const String version = '0.4.1';
   static const String repositoryUrl = 'https://github.com/lbonomo/VeloxMD';
   static const String issuesUrl = '$repositoryUrl/issues';
   static const String discussionsUrl = '$repositoryUrl/discussions';

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.1 - 2026-08-04
+
+### ✨ Features
+- **Developer Information**: Added developer profile section to About dialog
+  - Developer name: Lucas Bonomo
+  - Website link: https://lucasbonomo.com
+  - GitHub profile link: https://github.com/lbonomo
+  - LinkedIn profile link: https://www.linkedin.com/in/lbonomo/
+  - All links are clickable and open in default browser
+
+### 🐛 Bug Fixes
+- Fixed RenderFlex overflow in About dialog
+- Added SingleChildScrollView for content scrolling
+- Added maxHeight constraint for responsive design
+- Prevents layout errors on smaller screens
+
+### 📚 Content Updates
+- Professional attribution to project creator
+- Easy access to developer's professional profiles
+
+---
+
 ## 0.4.0 - 2026-08-04
 
 ### ✨ Features
