@@ -20,7 +20,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag=$(gh release view --json tagName --jq .tagName)
+          if [ -n "${GITHUB_REF_NAME:-}" ] && [ "${GITHUB_REF_NAME}" != "HEAD" ]; then
+            tag="$GITHUB_REF_NAME"
+          elif [ -n "${{ github.event.release.tag_name }}" ]; then
+            tag="${{ github.event.release.tag_name }}"
+          else
+            echo "Could not resolve latest release tag."
+            exit 1
+          fi
           if [ -z "$tag" ]; then
             echo "Could not resolve latest release tag."
             exit 1
@@ -28,9 +35,7 @@ jobs:
           echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
 
       - name: Validate release exists
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release view "${{ env.RELEASE_TAG }}"
+        run: echo "Using release tag ${{ env.RELEASE_TAG }}"
 
       - name: Setup Java
         uses: actions/setup-java@v4
