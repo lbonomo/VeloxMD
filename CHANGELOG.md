@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.4.0 - 2026-08-04
+
+### ✨ Features
+- **About Dialog**: Comprehensive project information dialog
+  - Project goal and description
+  - Complete feature list
+  - Development stack details (Flutter, Dart, Material Design 3)
+  - Getting started instructions
+  - Quick access links to GitHub resources
+  - License information (MIT)
+
+### 🎨 UI Enhancements
+- Added About button (info icon) in AppBar
+- Modal dialog with responsive layout
+- Clickable resource links (repository, issues, discussions)
+- Full theme support (dark/light mode)
+
+### 📚 Resources
+- Direct access to GitHub repository
+- Issue tracker link
+- Community discussions link
+
+---
+
 ## 0.3.0 - 2026-08-04
 
 ### ✨ Features
