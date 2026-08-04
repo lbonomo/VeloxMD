@@ -26,7 +26,7 @@ class DocumentFooter extends StatelessWidget {
           ),
         ),
         color: isDark
-            ? theme.colorScheme.surface.withValues(alpha: 0.5)
+            ? theme.colorScheme.surface.withOpacity(0.5)
             : theme.colorScheme.surface,
       ),
       child: Row(
@@ -95,7 +95,7 @@ class DocumentFooter extends StatelessWidget {
           Text(
             'VeloxMD v$version',
             style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.textTheme.labelSmall?.color?.withValues(alpha: 0.7),
+              color: theme.textTheme.labelSmall?.color?.withOpacity(0.7),
             ),
           ),
         ],
@@ -129,7 +129,7 @@ class _StatItem extends StatelessWidget {
           size: 14,
           color: highlight
               ? theme.colorScheme.primary
-              : theme.textTheme.labelSmall?.color?.withValues(alpha: 0.7),
+              : theme.textTheme.labelSmall?.color?.withOpacity(0.7),
         ),
         const SizedBox(width: 4),
         Text(
@@ -137,7 +137,7 @@ class _StatItem extends StatelessWidget {
           style: theme.textTheme.labelSmall?.copyWith(
             color: highlight
                 ? theme.colorScheme.primary
-                : theme.textTheme.labelSmall?.color?.withValues(alpha: 0.7),
+                : theme.textTheme.labelSmall?.color?.withOpacity(0.7),
           ),
         ),
         Text(
