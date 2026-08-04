@@ -11,9 +11,6 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: gui
 
     steps:
       - name: Checkout repository
