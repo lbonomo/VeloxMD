@@ -13,6 +13,8 @@ A **fast** Markdown viewer built with Flutter, focused on the Linux desktop expe
 - 🔗 Clickable hyperlinks (opens in system browser)
 - 💻 GitHub-Flavoured Markdown (tables, strikethrough, task lists, emoji)
 - 🖱️ Fully selectable rendered text
+- 📊 Document statistics (words, lines, characters, tokens, etc.)
+- 👨‍💻 About section with developer information and links
 
 ## Keyboard shortcuts
 
@@ -25,12 +27,14 @@ A **fast** Markdown viewer built with Flutter, focused on the Linux desktop expe
 
 ## Build & run
 
-### Prerequisites
+### Linux (Primary Platform)
+
+#### Prerequisites
 
 - Flutter SDK ≥ 3.10 with Linux desktop support enabled
 - GTK 3 development libraries (`libgtk-3-dev` on Debian/Ubuntu)
 
-### Commands
+#### Commands
 
 ```bash
 # Enable Linux desktop target (once)
@@ -50,6 +54,27 @@ flutter build linux --release
 ./veloxmd path/to/document.md
 ```
 
+### Windows
+
+#### Build Locally
+
+```bash
+# Build Windows release binary
+flutter build windows --release
+
+# Build installer with Inno Setup (requires Inno Setup 6 installed)
+# See: windows/installer/README.md for detailed instructions
+```
+
+#### Automated Build
+
+Windows installers are automatically built and published as release assets when you create a GitHub release. See `.github/workflows/build-windows.yml` for details.
+
+#### Download
+
+Download the latest Windows installer from the [Releases page](https://github.com/lbonomo/VeloxMD/releases):
+- File: `veloxmd-setup-windows-x64-v{version}.exe`
+
 ### Running tests
 
 ```bash
@@ -60,17 +85,21 @@ flutter test
 
 ```
 lib/
-├── main.dart              – entry point, window manager initialisation
-├── app.dart               – MaterialApp, theme management
+├── main.dart                – entry point, window manager initialisation
+├── app.dart                 – MaterialApp, theme management
 ├── screens/
-│   └── viewer_screen.dart – main UI: toolbar, drag-drop, keyboard shortcuts
+│   └── viewer_screen.dart   – main UI: toolbar, drag-drop, keyboard shortcuts
 ├── widgets/
 │   ├── markdown_viewer.dart – flutter_markdown widget with custom styling
-│   └── toc_panel.dart       – Table of Contents side panel
+│   ├── toc_panel.dart       – Table of Contents side panel
+│   ├── document_footer.dart – Document statistics footer with token counter
+│   └── dialogs/
+│       └── about_dialog.dart – About dialog with project and developer info
 ├── models/
-│   └── toc_entry.dart     – heading model + Markdown parser
+│   ├── toc_entry.dart       – heading model + Markdown parser
+│   └── document_stats.dart  – Document statistics and token calculation
 └── services/
-    └── file_service.dart  – async file reading with validation
+    └── file_service.dart    – async file reading with validation
 ```
 
 ## Desktop integration
@@ -83,3 +112,11 @@ handler for `text/markdown` files in any XDG-compliant desktop environment:
 cp linux/runner/resources/veloxmd.desktop ~/.local/share/applications/
 update-desktop-database ~/.local/share/applications/
 ```
+
+## Windows Installer
+
+See [windows/installer/README.md](windows/installer/README.md) for:
+- Automated Windows installer build via GitHub Actions
+- Manual local build instructions
+- Customization and troubleshooting guides
+
