@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import '../widgets/markdown_viewer.dart';
 import '../widgets/toc_panel.dart';
 import '../widgets/document_footer.dart';
+import '../dialogs/about_dialog.dart';
 import '../models/toc_entry.dart';
 import '../models/document_stats.dart';
 import '../services/file_service.dart';
@@ -206,6 +207,14 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
           icon: const Icon(Icons.folder_open),
           tooltip: 'Open file (Ctrl+O)',
           onPressed: _pickAndOpenFile,
+        ),
+        IconButton(
+          icon: const Icon(Icons.info_outline),
+          tooltip: 'About VeloxMD',
+          onPressed: () => showDialog(
+            context: context,
+            builder: (context) => const VeloxAboutDialog(),
+          ),
         ),
       ],
     );
