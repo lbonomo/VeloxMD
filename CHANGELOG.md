@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.5 - 2026-08-04
+
+### 📦 Version Bump
+- Patch version bump to 0.4.5
+
+---
+
 ## 0.4.4 - 2026-08-04
 
 ### 📦 Version Bump
