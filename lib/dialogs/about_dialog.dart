@@ -8,6 +8,9 @@ class VeloxAboutDialog extends StatelessWidget {
   static const String repositoryUrl = 'https://github.com/lbonomo/VeloxMD';
   static const String issuesUrl = '$repositoryUrl/issues';
   static const String discussionsUrl = '$repositoryUrl/discussions';
+  static const String developerName = 'Lucas Bonomo';
+  static const String developerWebsite = 'https://lucasbonomo.com';
+  static const String developerGithub = 'https://github.com/lbonomo';
 
   Future<void> _launchUrl(String url) async {
     if (!await launchUrl(Uri.parse(url),
@@ -104,6 +107,49 @@ class VeloxAboutDialog extends StatelessWidget {
                     'Run: ./build/linux/x64/release/bundle/veloxmd\n'
                     'Dev: flutter run -d linux',
                 theme: theme,
+              ),
+              const SizedBox(height: 24),
+
+              // Developer Section
+              Text(
+                '👨‍💻 Developer',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      developerName,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _LinkButton(
+                          label: 'Website',
+                          icon: Icons.language,
+                          onPressed: () => _launchUrl(developerWebsite),
+                          theme: theme,
+                        ),
+                        _LinkButton(
+                          label: 'GitHub Profile',
+                          icon: Icons.person,
+                          onPressed: () => _launchUrl(developerGithub),
+                          theme: theme,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
 
