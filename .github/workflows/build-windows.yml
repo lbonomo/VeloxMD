@@ -18,20 +18,19 @@ jobs:
 
       - name: Resolve latest release tag
         shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = gh release view --json tagName --jq .tagName
-          if ([string]::IsNullOrWhiteSpace($tag)) {
+          if ($env:GITHUB_REF_NAME -and $env:GITHUB_REF_NAME -ne 'HEAD') {
+            $tag = $env:GITHUB_REF_NAME
+          } elseif ('${{ github.event.release.tag_name }}') {
+            $tag = '${{ github.event.release.tag_name }}'
+          } else {
             throw "Could not resolve latest release tag."
           }
 
           "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
 
       - name: Validate release exists
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release view "${{ env.RELEASE_TAG }}"
+        run: echo "Using release tag ${{ env.RELEASE_TAG }}"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
