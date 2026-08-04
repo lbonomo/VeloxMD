@@ -8,7 +8,9 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:path/path.dart' as p;
 import '../widgets/markdown_viewer.dart';
 import '../widgets/toc_panel.dart';
+import '../widgets/document_footer.dart';
 import '../models/toc_entry.dart';
+import '../models/document_stats.dart';
 import '../services/file_service.dart';
 
 class ViewerScreen extends StatefulWidget {
@@ -34,6 +36,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   String? _errorMessage;
   bool _tocVisible = false;
   List<TocEntry> _tocEntries = [];
+  DocumentStats _stats = DocumentStats.fromMarkdown('');
+  final String _version = '0.2.0';
   final _scrollController = ScrollController();
   StreamSubscription<FileSystemEvent>? _fileWatchSub;
 
@@ -81,6 +85,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
       setState(() {
         _filePath = path;
         _markdownContent = content;
+        _stats = DocumentStats.fromMarkdown(content);
         _isLoading = false;
         _tocEntries = TocEntry.fromMarkdown(content);
       });
@@ -106,6 +111,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
       final content = await FileService.readMarkdown(_filePath!);
       setState(() {
         _markdownContent = content;
+        _stats = DocumentStats.fromMarkdown(content);
         _tocEntries = TocEntry.fromMarkdown(content);
       });
     } catch (_) {
@@ -159,6 +165,9 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             child: Scaffold(
               appBar: _buildAppBar(context),
               body: _buildBody(context),
+              bottomNavigationBar: _filePath != null
+                  ? DocumentFooter(stats: _stats, version: _version)
+                  : null,
             ),
           ),
         ),
