@@ -38,7 +38,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   bool _tocVisible = false;
   List<TocEntry> _tocEntries = [];
   DocumentStats _stats = DocumentStats.fromMarkdown('');
-  final String _version = '0.4.1';
+  final String _version = '0.4.2';
   final _scrollController = ScrollController();
   StreamSubscription<FileSystemEvent>? _fileWatchSub;
 

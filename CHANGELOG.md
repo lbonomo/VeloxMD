@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.2 - 2026-08-04
+
+### ✨ Features
+- **Android CI/CD Automation**: Added GitHub Actions workflow for automated Android builds
+  - Automated APK (Android Package) build process
+  - Automated AAB (Android App Bundle) build for Google Play Store
+  - Multi-platform build configuration
+  - Integrated GitHub Actions CI/CD pipeline
+
+### 🔧 Build System
+- Android Gradle build configuration
+- Automated build triggers on releases
+- Platform-specific build optimizations
+- Continuous integration for mobile platform
+
+### 📦 Deployment
+- Ready for Google Play Store distribution
+- APK distribution support
+- Automated artifact generation
+
+---
+
 ## 0.4.1 - 2026-08-04
 
 ### ✨ Features
