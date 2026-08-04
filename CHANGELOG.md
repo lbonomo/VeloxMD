@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.3 - 2026-08-04
+
+### 🔧 Build System
+- Updated Android and Windows release workflows to work better with local `act` runs
+
+---
+
 ## 0.4.2 - 2026-08-04
 
 ### ✨ Features
@@ -97,4 +104,3 @@
 
 - Minor version bump from 0.1.1 to 0.2.0.
 - Aligned Linux CMake project version with pubspec version.
-
