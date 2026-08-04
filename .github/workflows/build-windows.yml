@@ -11,10 +11,13 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-latest
-
+    defaults:
+      run:
+        working-directory: gui
+        
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Resolve latest release tag
         shell: pwsh
