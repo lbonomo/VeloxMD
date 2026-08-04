@@ -11,6 +11,7 @@ class VeloxAboutDialog extends StatelessWidget {
   static const String developerName = 'Lucas Bonomo';
   static const String developerWebsite = 'https://lucasbonomo.com';
   static const String developerGithub = 'https://github.com/lbonomo';
+  static const String developerLinkedin = 'https://www.linkedin.com/in/lbonomo/';
 
   Future<void> _launchUrl(String url) async {
     if (!await launchUrl(Uri.parse(url),
@@ -144,6 +145,12 @@ class VeloxAboutDialog extends StatelessWidget {
                           label: 'GitHub Profile',
                           icon: Icons.person,
                           onPressed: () => _launchUrl(developerGithub),
+                          theme: theme,
+                        ),
+                        _LinkButton(
+                          label: 'LinkedIn',
+                          icon: Icons.work,
+                          onPressed: () => _launchUrl(developerLinkedin),
                           theme: theme,
                         ),
                       ],
