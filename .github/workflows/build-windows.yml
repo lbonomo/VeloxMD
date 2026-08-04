@@ -1,0 +1,83 @@
+name: Build Windows binary on release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve latest release tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = gh release view --json tagName --jq .tagName
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            throw "Could not resolve latest release tag."
+          }
+
+          "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
+
+      - name: Validate release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view "${{ env.RELEASE_TAG }}"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $tag = "${{ env.RELEASE_TAG }}"
+          $version = $tag.TrimStart('v')
+          $assetName = "veloxmd-setup-windows-x64-$tag"
+          $sourceDir = (Resolve-Path "build/windows/x64/runner/Release").Path
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+
+          if (-not (Test-Path $iscc)) {
+            throw "ISCC not found at $iscc"
+          }
+
+          & $iscc `
+            "/DMyAppVersion=$version" `
+            "/DMyOutputBaseFilename=$assetName" `
+            "/DMySourceDir=$sourceDir" `
+            "windows/installer/veloxmd.iss"
+
+          $assetPath = "build/windows/installer/$assetName.exe"
+          if (-not (Test-Path $assetPath)) {
+            throw "Installer output not found at $assetPath"
+          }
+          "ASSET_PATH=$assetPath" >> $env:GITHUB_ENV
+
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release upload "${{ env.RELEASE_TAG }}"
+          "${{ env.ASSET_PATH }}"
+          --clobber
