@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4 (e7c3feb100, 2024-10-09)"
+   sodipodi:docname="icon.svg"
+   inkscape:export-filename="icon.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     showguides="true"
+     inkscape:zoom="0.73046875"
+     inkscape:cx="231.35829"
+     inkscape:cy="354.56684"
+     inkscape:window-width="1920"
+     inkscape:window-height="971"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <sodipodi:guide
+       position="446.28877,512"
+       orientation="1,0"
+       id="guide3"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="245.61497,66.514358"
+       orientation="0,-1"
+       id="guide4"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="406.35829,428.74866"
+       orientation="1,0"
+       id="guide5"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="405.88093,401.67817"
+       orientation="1,0"
+       id="guide6"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Capa 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:#cc0000;stroke-width:46.0663;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;paint-order:stroke fill markers"
+       id="rect1"
+       width="512"
+       height="512"
+       x="0"
+       y="0"
+       rx="86.178162" />
+    <g
+       id="g4"
+       transform="matrix(0.88440421,0,0,0.88440421,12.977802,-29.353871)">
+      <text
+         xml:space="preserve"
+         style="font-size:275.473px;line-height:0;font-family:'DejaVu Sans';-inkscape-font-specification:'DejaVu Sans, Normal';text-align:center;text-anchor:middle;display:inline;fill:#ffffff;stroke-width:1.43476"
+         x="436.93503"
+         y="509.10641"
+         id="text3"
+         inkscape:label="text3"><tspan
+           sodipodi:role="line"
+           id="tspan3"
+           x="436.93503"
+           y="509.10641"
+           style="fill:#ffffff;stroke-width:1.43476">🠫</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:30.3525px;line-height:0;font-family:'DejaVu Sans';-inkscape-font-specification:'DejaVu Sans, Normal';text-align:center;text-anchor:middle;display:inline;fill:#ffffff;stroke-width:2.67816"
+         x="255.74292"
+         y="504.42349"
+         id="text1"><tspan
+           sodipodi:role="line"
+           id="tspan1"
+           x="255.74292"
+           y="504.42349"
+           style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:514.208px;font-family:C059;-inkscape-font-specification:'C059 Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;stroke-width:2.67816">V</tspan></text>
+    </g>
+  </g>
+</svg>

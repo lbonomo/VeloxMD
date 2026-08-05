@@ -75,35 +75,6 @@ Windows installers are automatically built and published as release assets when 
 Download the latest Windows installer from the [Releases page](https://github.com/lbonomo/VeloxMD/releases):
 - File: `veloxmd-setup-windows-x64-v{version}.exe`
 
-### Android (Experimental)
-
-#### Build Locally
-
-```bash
-# Build release APK
-flutter build apk --release
-# Output: build/app/outputs/flutter-apk/app-release.apk
-
-# Build App Bundle (for Google Play)
-flutter build appbundle --release
-# Output: build/app/outputs/bundle/release/app-release.aab
-
-# Install and run on device/emulator
-flutter run --release
-```
-
-#### Automated Build
-
-Android APK and App Bundle are automatically built and published as release assets when you create a GitHub release. See `.github/workflows/build-android.yml` for details.
-
-#### Download
-
-Download the latest Android APK from the [Releases page](https://github.com/lbonomo/VeloxMD/releases):
-- APK: `veloxmd-release-v{version}-universal.apk`
-- AAB: `veloxmd-release-v{version}.aab`
-
-**Note:** Android support is experimental. VeloxMD is primarily designed for Linux desktop.
-
 ### Running tests
 
 ```bash
@@ -149,12 +120,4 @@ See [windows/installer/README.md](windows/installer/README.md) for:
 - Manual local build instructions
 - Customization and troubleshooting guides
 
-## Android Build
-
-See [android-build/README.md](android-build/README.md) for:
-- Automated Android APK and AAB build via GitHub Actions
-- Local build instructions
-- Installation and testing guides
-- Google Play Store distribution
-- Troubleshooting and optimization tips
 
