@@ -44,6 +44,9 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -75,6 +78,12 @@ jobs:
           
           echo "APK_PATH=build/android/release/veloxmd-release-${tag}-universal.apk" >> $GITHUB_ENV
           echo "AAB_PATH=build/android/release/veloxmd-release-${tag}.aab" >> $GITHUB_ENV
+
+      - name: Install GitHub CLI
+        run: |
+          if ! command -v gh &> /dev/null; then
+            apt-get update && apt-get install -y gh
+          fi
 
       - name: Upload release assets
         env:
