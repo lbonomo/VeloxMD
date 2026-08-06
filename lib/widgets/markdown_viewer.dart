@@ -12,20 +12,34 @@ class MarkdownViewer extends StatelessWidget {
     required this.content,
     required this.scrollController,
     required this.basePath,
+    this.searchQuery = '',
+    this.activeMatchIndex = 0,
+    this.useGoogleFonts = true,
   });
 
   final String content;
   final ScrollController scrollController;
   final String basePath;
+  final String searchQuery;
+  final int activeMatchIndex;
+  final bool useGoogleFonts;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final query = searchQuery.trim();
+    final matchBackgroundColor = isDark
+        ? const Color(0xFFFFFF00)
+        : const Color(0xFFFFC107);
+    final activeMatchBackgroundColor = isDark
+        ? const Color(0xFFFFD600)
+        : const Color(0xFFFF9800);
 
     return Scrollbar(
       controller: scrollController,
       child: Markdown(
+        key: ValueKey<String>('${searchQuery.trim()}::${activeMatchIndex}'),
         controller: scrollController,
         data: content,
         selectable: true,
@@ -34,10 +48,20 @@ class MarkdownViewer extends StatelessWidget {
         extensionSet: md.ExtensionSet(
           md.ExtensionSet.gitHubFlavored.blockSyntaxes,
           <md.InlineSyntax>[
+            if (query.isNotEmpty) _SearchHighlightSyntax(query),
             md.EmojiSyntax(),
             ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
           ],
         ),
+        builders: <String, MarkdownElementBuilder>{
+          if (query.isNotEmpty)
+            _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
+              backgroundColor: matchBackgroundColor,
+              activeBackgroundColor: activeMatchBackgroundColor,
+              activeMatchIndex: activeMatchIndex,
+              scrollController: scrollController,
+            ),
+        },
         onTapLink: (text, href, title) async {
           if (href == null) return;
           final uri = Uri.tryParse(href);
@@ -53,8 +77,10 @@ class MarkdownViewer extends StatelessWidget {
 
   MarkdownStyleSheet _buildStyleSheet(BuildContext context, bool isDark) {
     final theme = Theme.of(context);
-    final codeFont = GoogleFonts.firaCode(fontSize: 13.5);
-    final bodyFont = GoogleFonts.inter();
+    final codeFont = useGoogleFonts
+        ? GoogleFonts.firaCode(fontSize: 13.5)
+        : const TextStyle(fontFamily: 'monospace', fontSize: 13.5);
+    final bodyFont = useGoogleFonts ? GoogleFonts.inter() : const TextStyle();
 
     final codeBg = isDark
         ? theme.colorScheme.surfaceContainerHighest
@@ -101,17 +127,12 @@ class MarkdownViewer extends StatelessWidget {
       ),
       code: codeFont.copyWith(
         backgroundColor: codeBg,
-        color: isDark
-            ? theme.colorScheme.primary
-            : const Color(0xFFD63200),
+        color: isDark ? theme.colorScheme.primary : const Color(0xFFD63200),
       ),
       codeblockDecoration: BoxDecoration(
         color: codeBg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant,
-          width: 1,
-        ),
+        border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
       ),
       codeblockPadding: const EdgeInsets.all(16),
       blockquoteDecoration: BoxDecoration(
@@ -123,10 +144,7 @@ class MarkdownViewer extends StatelessWidget {
       blockquotePadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       horizontalRuleDecoration: BoxDecoration(
         border: Border(
-          top: BorderSide(
-            color: theme.colorScheme.outlineVariant,
-            width: 1,
-          ),
+          top: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
         ),
       ),
       tableHead: bodyFont.copyWith(fontWeight: FontWeight.bold),
@@ -147,4 +165,70 @@ class MarkdownViewer extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SearchHighlightSyntax extends md.InlineSyntax {
+  _SearchHighlightSyntax(String query)
+      : super(RegExp.escape(query), caseSensitive: false);
+
+  static const tag = 'search-highlight';
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element.text(tag, match[0]!));
+    return true;
+  }
+}
+
+class _SearchHighlightBuilder extends MarkdownElementBuilder {
+  _SearchHighlightBuilder({
+    required this.backgroundColor,
+    required this.activeBackgroundColor,
+    required this.activeMatchIndex,
+    required this.scrollController,
+  });
+
+  final Color backgroundColor;
+  final Color activeBackgroundColor;
+  final int activeMatchIndex;
+  final ScrollController scrollController;
+  int _matchIndex = 0;
+
+  @override
+  Widget visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final currentMatchIndex = _matchIndex++;
+    final isActive = currentMatchIndex == activeMatchIndex;
+
+    if (isActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!scrollController.hasClients) return;
+        final context = _activeMatchKey.currentContext;
+        if (context != null) {
+          Scrollable.ensureVisible(
+            context,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            alignment: 0.2,
+          );
+        }
+      });
+    }
+
+    final baseStyle = preferredStyle ?? parentStyle ?? const TextStyle();
+
+    return Text(
+      key: isActive ? _activeMatchKey : null,
+      element.textContent,
+      style: baseStyle?.copyWith(
+        backgroundColor: isActive ? activeBackgroundColor : backgroundColor,
+      ),
+    );
+  }
+
+  final GlobalKey _activeMatchKey = GlobalKey();
 }
