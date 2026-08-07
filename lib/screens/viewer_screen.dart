@@ -66,7 +66,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   Future<void> _pickAndOpenFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['md', 'markdown', 'txt'],
+      allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
       dialogTitle: 'Open Markdown file',
     );
     if (result != null && result.files.single.path != null) {
@@ -298,7 +298,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
           ),
           const SizedBox(height: 12),
           Text(
-            'or drop a .md file anywhere\nKeyboard: Ctrl+O',
+            'or drop a .md / .mdc file anywhere\nKeyboard: Ctrl+O',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall,
           ),

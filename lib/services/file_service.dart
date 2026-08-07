@@ -14,7 +14,7 @@ class FileService {
   FileService._();
 
   static const _maxFileSizeBytes = 50 * 1024 * 1024; // 50 MB
-  static const _supportedExtensions = {'.md', '.markdown', '.txt'};
+  static const _supportedExtensions = {'.md', '.markdown', '.mdc', '.txt'};
 
   static Future<String> readMarkdown(String path) async {
     final file = File(path);
