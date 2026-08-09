@@ -79,8 +79,8 @@ jobs:
 
       - name: Build Linux release bundle
         env:
-          CC: clang
-          CXX: clang++
+          CC: clang-19
+          CXX: clang++-19
         run: flutter build linux --release
 
       - name: Download appimagetool
@@ -216,8 +216,8 @@ jobs:
 
       - name: Build .deb package
         env:
-          CC: clang
-          CXX: clang++
+          CC: clang-19
+          CXX: clang++-19
         run: |
           chmod +x build_deb.sh
           ./build_deb.sh --release
