@@ -31,7 +31,7 @@ Las API keys se usan para registrar el Problema de consumo por tenant.
             basePath: '.',
             searchQuery: 'Problema',
             activeMatchIndex: 1,
-            useGoogleFonts: false,
+            useBundledFonts: false,
           ),
         ),
       ),
