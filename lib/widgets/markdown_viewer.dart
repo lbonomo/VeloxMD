@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:markdown/markdown.dart' as md;
 
@@ -85,7 +84,7 @@ class MarkdownViewer extends StatelessWidget {
     required this.basePath,
     this.searchQuery = '',
     this.activeMatchIndex = 0,
-    this.useGoogleFonts = true,
+    this.useBundledFonts = true,
     this.horizontalPadding = 32,
   });
 
@@ -94,7 +93,7 @@ class MarkdownViewer extends StatelessWidget {
   final String basePath;
   final String searchQuery;
   final int activeMatchIndex;
-  final bool useGoogleFonts;
+  final bool useBundledFonts;
   final double horizontalPadding;
 
   @override
@@ -165,10 +164,11 @@ class MarkdownViewer extends StatelessWidget {
 
   MarkdownStyleSheet _buildStyleSheet(BuildContext context, bool isDark) {
     final theme = Theme.of(context);
-    final codeFont = useGoogleFonts
-        ? GoogleFonts.firaCode(fontSize: 13.5)
+    final codeFont = useBundledFonts
+        ? const TextStyle(fontFamily: 'FiraCode', fontSize: 13.5)
         : const TextStyle(fontFamily: 'monospace', fontSize: 13.5);
-    final bodyFont = useGoogleFonts ? GoogleFonts.inter() : const TextStyle();
+    final bodyFont =
+        useBundledFonts ? const TextStyle(fontFamily: 'Inter') : const TextStyle();
 
     final codeBg = isDark
         ? theme.colorScheme.surfaceContainerHighest

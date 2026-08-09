@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle, LogicalKeyboardKey;
-import 'package:google_fonts/google_fonts.dart';
 import 'package:webview_cef/webview_cef.dart';
 
 /// Decodes the HTML entities that the Markdown parser injects into fenced
@@ -591,7 +590,8 @@ class _RawFallback extends StatelessWidget {
           const SizedBox(height: 8),
           SelectableText(
             code,
-            style: GoogleFonts.firaCode(fontSize: 13.5, color: foregroundColor),
+            style: const TextStyle(fontFamily: 'FiraCode', fontSize: 13.5)
+                .copyWith(color: foregroundColor),
           ),
         ],
       ),
