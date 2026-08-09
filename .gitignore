@@ -27,6 +27,7 @@ windows/flutter/
 
 # Test
 coverage/
+test/failures/
 
 # Dist
 dist/*.deb

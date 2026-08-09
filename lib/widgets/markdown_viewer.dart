@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -24,6 +26,50 @@ GlobalKey _mermaidViewKey(String source, bool isDark) =>
 /// so keys for diagrams that no longer exist do not accumulate.
 void clearMermaidViewKeyCache() => _mermaidViewKeys.clear();
 
+/// The Markdown extension set used by the viewer. When [query] is non-empty a
+/// [_SearchHighlightSyntax] is prepended so every match is wrapped in a
+/// highlight element. Shared between the rendered widget and
+/// [countHighlightMatches] so the visible highlights and the reported match
+/// count are guaranteed to agree.
+md.ExtensionSet buildMarkdownExtensionSet(String query) => md.ExtensionSet(
+      md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+      <md.InlineSyntax>[
+        if (query.isNotEmpty) _SearchHighlightSyntax(query),
+        md.EmojiSyntax(),
+        ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
+      ],
+    );
+
+/// Counts how many occurrences of [query] would actually be highlighted in the
+/// rendered [content]. Parses the document with the exact same extension set
+/// the viewer uses and counts the emitted highlight elements, so matches inside
+/// fenced code blocks (which are not inline-parsed) are correctly excluded and
+/// the count matches what the user sees.
+int countHighlightMatches(String content, String query) {
+  final trimmed = query.trim();
+  if (trimmed.isEmpty || content.isEmpty) return 0;
+
+  final document = md.Document(
+    extensionSet: buildMarkdownExtensionSet(trimmed),
+    encodeHtml: false,
+  );
+  final nodes = document.parseLines(const LineSplitter().convert(content));
+
+  var count = 0;
+  void walk(List<md.Node> ns) {
+    for (final node in ns) {
+      if (node is md.Element) {
+        if (node.tag == _SearchHighlightSyntax.tag) count++;
+        final children = node.children;
+        if (children != null) walk(children);
+      }
+    }
+  }
+
+  walk(nodes);
+  return count;
+}
+
 /// A scrollable Markdown viewer with syntax-highlighted code blocks,
 /// clickable links, ```mermaid``` diagram rendering, and image support
 /// relative to [basePath].
@@ -41,7 +87,6 @@ class MarkdownViewer extends StatelessWidget {
     this.activeMatchIndex = 0,
     this.useGoogleFonts = true,
     this.horizontalPadding = 32,
-    this.onMatchCountResolved,
   });
 
   final String content;
@@ -51,10 +96,6 @@ class MarkdownViewer extends StatelessWidget {
   final int activeMatchIndex;
   final bool useGoogleFonts;
   final double horizontalPadding;
-
-  /// Invoked after a build with the total number of highlighted occurrences of
-  /// [searchQuery] in the rendered document, enabling match navigation UI.
-  final ValueChanged<int>? onMatchCountResolved;
 
   @override
   Widget build(BuildContext context) {
@@ -78,50 +119,45 @@ class MarkdownViewer extends StatelessWidget {
 
     return Scrollbar(
       controller: scrollController,
-      child: Markdown(
-        key: ValueKey<String>('${searchQuery.trim()}::$activeMatchIndex'),
+      child: SingleChildScrollView(
         controller: scrollController,
-        data: content,
-        selectable: true,
-        shrinkWrap: false,
-        imageDirectory: basePath,
-        extensionSet: md.ExtensionSet(
-          md.ExtensionSet.gitHubFlavored.blockSyntaxes,
-          <md.InlineSyntax>[
-            if (query.isNotEmpty) _SearchHighlightSyntax(query),
-            md.EmojiSyntax(),
-            ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
-          ],
-        ),
-        builders: <String, MarkdownElementBuilder>{
-          // Always registered: renders ```mermaid``` blocks as diagrams and
-          // defers other code blocks to the default renderer.
-          'pre': _CodeBlockBuilder(
-            isDark: isDark,
-            codeBackground: codeBackground,
-            codeForeground: theme.colorScheme.onSurface,
-          ),
-          if (query.isNotEmpty)
-            _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
-              backgroundColor: matchBackgroundColor,
-              activeBackgroundColor: activeMatchBackgroundColor,
-              foregroundColor: matchForegroundColor,
-              activeMatchIndex: activeMatchIndex,
-              scrollController: scrollController,
-              onMatchCountResolved: onMatchCountResolved,
-            ),
-        },
-        onTapLink: (text, href, title) async {
-          if (href == null) return;
-          final uri = Uri.tryParse(href);
-          if (uri != null && await canLaunchUrl(uri)) {
-            await launchUrl(uri);
-          }
-        },
-        styleSheet: _buildStyleSheet(context, isDark),
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,
           vertical: 24,
+        ),
+        child: MarkdownBody(
+          key: ValueKey<String>('${searchQuery.trim()}::$activeMatchIndex'),
+          data: content,
+          selectable: true,
+          shrinkWrap: true,
+          fitContent: false,
+          imageDirectory: basePath,
+          extensionSet: buildMarkdownExtensionSet(query),
+          builders: <String, MarkdownElementBuilder>{
+            // Always registered: renders ```mermaid``` blocks as diagrams and
+            // defers other code blocks to the default renderer.
+            'pre': _CodeBlockBuilder(
+              isDark: isDark,
+              codeBackground: codeBackground,
+              codeForeground: theme.colorScheme.onSurface,
+            ),
+            if (query.isNotEmpty)
+              _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
+                backgroundColor: matchBackgroundColor,
+                activeBackgroundColor: activeMatchBackgroundColor,
+                foregroundColor: matchForegroundColor,
+                activeMatchIndex: activeMatchIndex,
+                scrollController: scrollController,
+              ),
+          },
+          onTapLink: (text, href, title) async {
+            if (href == null) return;
+            final uri = Uri.tryParse(href);
+            if (uri != null && await canLaunchUrl(uri)) {
+              await launchUrl(uri);
+            }
+          },
+          styleSheet: _buildStyleSheet(context, isDark),
         ),
       ),
     );
@@ -297,24 +333,13 @@ class _SearchHighlightBuilder extends MarkdownElementBuilder {
     required this.activeMatchIndex,
     required this.scrollController,
     this.foregroundColor,
-    this.onMatchCountResolved,
-  }) {
-    // All match elements are visited synchronously during this frame's build,
-    // so by the time the post-frame callback fires [_matchIndex] equals the
-    // total number of occurrences rendered.
-    if (onMatchCountResolved != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        onMatchCountResolved!(_matchIndex);
-      });
-    }
-  }
+  });
 
   final Color backgroundColor;
   final Color activeBackgroundColor;
   final Color? foregroundColor;
   final int activeMatchIndex;
   final ScrollController scrollController;
-  final ValueChanged<int>? onMatchCountResolved;
   int _matchIndex = 0;
 
   @override
