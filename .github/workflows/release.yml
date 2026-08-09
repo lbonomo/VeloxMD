@@ -56,8 +56,9 @@ jobs:
           wget -q https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh 19
-          sudo update-alternatives --install /usr/bin/clang   clang   /usr/bin/clang-19   100
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
+          sudo ln -sf /usr/bin/clang-19   /usr/bin/clang
+          sudo ln -sf /usr/bin/clang++-19 /usr/bin/clang++
+          clang++ --version
 
       - name: Set up Flutter
         run: |
@@ -78,9 +79,6 @@ jobs:
         run: flutter pub get
 
       - name: Build Linux release bundle
-        env:
-          CC: clang-19
-          CXX: clang++-19
         run: flutter build linux --release
 
       - name: Download appimagetool
@@ -193,8 +191,9 @@ jobs:
           wget -q https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh 19
-          sudo update-alternatives --install /usr/bin/clang   clang   /usr/bin/clang-19   100
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
+          sudo ln -sf /usr/bin/clang-19   /usr/bin/clang
+          sudo ln -sf /usr/bin/clang++-19 /usr/bin/clang++
+          clang++ --version
 
       - name: Set up Flutter
         run: |
@@ -215,9 +214,6 @@ jobs:
         run: flutter pub get
 
       - name: Build .deb package
-        env:
-          CC: clang-19
-          CXX: clang++-19
         run: |
           chmod +x build_deb.sh
           ./build_deb.sh --release
