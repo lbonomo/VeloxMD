@@ -51,6 +51,14 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   StreamSubscription<FileSystemEvent>? _fileWatchSub;
   bool _isPickerOpen = false;
 
+  /// Debounced search query actually applied to the rendered view and the match
+  /// count. Typing updates the text field immediately, but re-parsing/rendering
+  /// the whole document is deferred until the user pauses, avoiding a full
+  /// re-parse on every keystroke on large documents.
+  String _searchQuery = '';
+  Timer? _searchDebounce;
+  static const Duration _searchDebounceDelay = Duration(milliseconds: 180);
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +88,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   void dispose() {
     windowManager.removeListener(this);
     _fileWatchSub?.cancel();
+    _searchDebounce?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -166,12 +175,19 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   // Search navigation
   // ---------------------------------------------------------------------------
 
-  /// Called when the query text changes: recomputes the match count and resets
-  /// the active occurrence to the first match so navigation restarts from top.
+  /// Called when the query text changes. Debounced: re-parsing the document to
+  /// count matches and rebuilding the rendered view is deferred until the user
+  /// pauses typing, so fast typing does not trigger a full re-parse per
+  /// keystroke. Resets the active occurrence to the first match.
   void _onSearchChanged(String query) {
-    setState(() {
-      _matchCount = countHighlightMatches(_markdownContent, query);
-      _activeMatchIndex = 0;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(_searchDebounceDelay, () {
+      if (!mounted) return;
+      setState(() {
+        _searchQuery = query;
+        _matchCount = countHighlightMatches(_markdownContent, query);
+        _activeMatchIndex = 0;
+      });
     });
   }
 
@@ -179,10 +195,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   /// document and clamps the active index into range. Call after the document
   /// content changes (open/reload) so the counter stays accurate.
   void _recomputeMatchCount() {
-    final count = countHighlightMatches(
-      _markdownContent,
-      _searchController.text,
-    );
+    final count = countHighlightMatches(_markdownContent, _searchQuery);
     _matchCount = count;
     if (count == 0) {
       _activeMatchIndex = 0;
@@ -313,7 +326,9 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
                                 icon: const Icon(Icons.clear),
                                 onPressed: () {
                                   _searchController.clear();
+                                  _searchDebounce?.cancel();
                                   setState(() {
+                                    _searchQuery = '';
                                     _activeMatchIndex = 0;
                                     _matchCount = 0;
                                   });
@@ -463,7 +478,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             content: _markdownContent,
             scrollController: _scrollController,
             basePath: p.dirname(_filePath!),
-            searchQuery: _searchController.text,
+            searchQuery: _searchQuery,
             activeMatchIndex: _activeMatchIndex,
             horizontalPadding: _horizontalMargin,
           ),
