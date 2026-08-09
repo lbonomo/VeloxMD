@@ -22,7 +22,10 @@ linux/flutter/
 macos/Flutter/
 
 # Windows build
-windows/flutter/
+windows/flutter/ephemeral/
+windows/flutter/generated_plugins.cmake
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
 
 # Test
 coverage/
