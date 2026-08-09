@@ -3,6 +3,12 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build for and upload to (leave empty to use the latest release)"
+        required: false
+        default: ""
 
 jobs:
   build-appimage:
@@ -15,6 +21,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if [ "$EVENT_NAME" = "release" ]; then
+            tag="$EVENT_TAG"
+          elif [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+          else
+            tag="$(gh release view --json tagName --jq .tagName)"
+          fi
+          if [ -z "$tag" ]; then
+            echo "Could not resolve a release tag." >&2
+            exit 1
+          fi
+          echo "Resolved release tag: $tag (event: $EVENT_NAME)"
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
 
       - name: Install system dependencies
         run: |
@@ -56,7 +83,7 @@ jobs:
       - name: Assemble AppDir
         run: |
           APP_NAME="veloxmd"
-          APP_VERSION="${{ github.event.release.tag_name }}"
+          APP_VERSION="${RELEASE_TAG}"
           BUNDLE_DIR="build/linux/x64/release/bundle"
           APPDIR="dist/${APP_NAME}.AppDir"
 
@@ -106,9 +133,9 @@ jobs:
             "$APPDIR" "$APPIMAGE_OUT"
 
       - name: Upload AppImage to release
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: ${{ env.APPIMAGE_OUT }}
 
   build-deb:
@@ -121,6 +148,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if [ "$EVENT_NAME" = "release" ]; then
+            tag="$EVENT_TAG"
+          elif [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+          else
+            tag="$(gh release view --json tagName --jq .tagName)"
+          fi
+          if [ -z "$tag" ]; then
+            echo "Could not resolve a release tag." >&2
+            exit 1
+          fi
+          echo "Resolved release tag: $tag (event: $EVENT_NAME)"
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
 
       - name: Install system dependencies
         run: |
@@ -157,7 +205,7 @@ jobs:
           echo "DEB_OUT=$DEB_FILE" >> "$GITHUB_ENV"
 
       - name: Upload .deb to release
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: ${{ env.DEB_OUT }}
