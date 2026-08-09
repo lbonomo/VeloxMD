@@ -12,6 +12,7 @@ A **fast** Markdown viewer built with Flutter, focused on the Linux desktop expe
 - 🌙 Dark / Light theme toggle (preference is persisted)
 - 🔗 Clickable hyperlinks (opens in system browser)
 - 💻 GitHub-Flavoured Markdown (tables, strikethrough, task lists, emoji)
+- 📈 Mermaid diagrams – ` ```mermaid ` blocks render as diagrams, fully offline
 - 🖱️ Fully selectable rendered text
 - 📊 Document statistics (words, lines, characters, tokens, etc.)
 - 👨‍💻 About section with developer information and links
@@ -31,8 +32,14 @@ A **fast** Markdown viewer built with Flutter, focused on the Linux desktop expe
 
 #### Prerequisites
 
-- Flutter SDK ≥ 3.10 with Linux desktop support enabled
+- Flutter SDK ≥ 3.27 with Linux desktop support enabled
 - GTK 3 development libraries (`libgtk-3-dev` on Debian/Ubuntu)
+- A C++20 toolchain and CMake/Ninja (`clang`, `cmake`, `ninja-build`, `pkg-config`)
+  — required by the embedded Chromium engine used for Mermaid diagrams
+
+> ℹ️ The **first** Linux build downloads the Chromium Embedded Framework
+> (CEF, ~330 MB) into `linux/flutter/.../third/cef` and compiles it, so the
+> initial build takes noticeably longer. Subsequent builds are fast.
 
 #### Commands
 
@@ -91,6 +98,7 @@ lib/
 │   └── viewer_screen.dart   – main UI: toolbar, drag-drop, keyboard shortcuts
 ├── widgets/
 │   ├── markdown_viewer.dart – flutter_markdown widget with custom styling
+│   ├── mermaid_view.dart    – offline Mermaid diagram renderer (webview_cef)
 │   ├── toc_panel.dart       – Table of Contents side panel
 │   ├── document_footer.dart – Document statistics footer with token counter
 │   └── dialogs/

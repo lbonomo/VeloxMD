@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### ✨ Features
+- **Mermaid diagram rendering**: ` ```mermaid ` fenced code blocks are now rendered
+  as diagrams (flowchart, sequence, class, state, gantt, pie, etc.).
+  - Rendered fully **offline** via a bundled Mermaid runtime inside an embedded
+    Chromium view (`webview_cef`) — no network calls, no external services.
+  - Follows the app's light/dark theme and resizes to fit the diagram.
+  - Gracefully falls back to showing the raw diagram source if the Chromium
+    engine is unavailable.
+
+---
+
 ## 0.4.5 - 2026-08-04
 
 ### 📦 Version Bump
