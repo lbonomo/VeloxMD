@@ -90,11 +90,11 @@ void main() {
         .toList();
 
     expect(matches, hasLength(2));
-    expect(matches[0].style?.backgroundColor, const Color(0xFFFFC107));
-    expect(matches[1].style?.backgroundColor, const Color(0xFFFF9800));
+    expect(matches[0].style?.backgroundColor, const Color(0xFFFFFBA7));
+    expect(matches[1].style?.backgroundColor, const Color(0xFFFFEA6C));
   });
 
-  testWidgets('preserves text color in dark theme while highlighting', (
+  testWidgets('inverts text color in dark theme while highlighting', (
     tester,
   ) async {
     final controller = ScrollController();
@@ -123,8 +123,8 @@ void main() {
       ),
     );
 
-    expect(match.style?.backgroundColor, isNotNull);
-    expect(match.style?.color, isNot(Colors.black));
+    expect(match.style?.backgroundColor, const Color(0xFF89D4FF));
+    expect(match.style?.color, Colors.black);
   });
 
   testWidgets('preserves heading style when highlight matches a heading', (
@@ -198,7 +198,7 @@ void main() {
     expect(
       firstState
           .where(
-            (text) => text.style?.backgroundColor == const Color(0xFFFF9800),
+            (text) => text.style?.backgroundColor == const Color(0xFFFFEA6C),
           )
           .length,
       1,
@@ -206,7 +206,7 @@ void main() {
     expect(
       firstState
           .where(
-            (text) => text.style?.backgroundColor == const Color(0xFFFFC107),
+            (text) => text.style?.backgroundColor == const Color(0xFFFFFBA7),
           )
           .length,
       2,
@@ -216,7 +216,7 @@ void main() {
     expect(
       secondState
           .where(
-            (text) => text.style?.backgroundColor == const Color(0xFFFF9800),
+            (text) => text.style?.backgroundColor == const Color(0xFFFFEA6C),
           )
           .length,
       1,
@@ -224,7 +224,7 @@ void main() {
     expect(
       secondState
           .where(
-            (text) => text.style?.backgroundColor == const Color(0xFFFFC107),
+            (text) => text.style?.backgroundColor == const Color(0xFFFFFBA7),
           )
           .length,
       2,

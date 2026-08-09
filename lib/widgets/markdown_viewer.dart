@@ -6,6 +6,24 @@ import 'package:markdown/markdown.dart' as md;
 
 import 'mermaid_view.dart';
 
+/// Stable [GlobalKey]s for rendered ```mermaid``` diagrams, keyed by diagram
+/// source + theme. Searching re-parses the whole document (to recolour the
+/// highlights), which would otherwise recreate every widget and re-initialise
+/// each diagram's CEF webview. Reusing a GlobalKey lets Flutter *reparent* the
+/// existing [MermaidView] element instead of rebuilding it, so the diagrams
+/// keep their state and do not flicker/reload on every keystroke.
+final Map<String, GlobalKey> _mermaidViewKeys = <String, GlobalKey>{};
+
+GlobalKey _mermaidViewKey(String source, bool isDark) =>
+    _mermaidViewKeys.putIfAbsent(
+      '${source.hashCode}:$isDark',
+      () => GlobalKey(debugLabel: 'mermaid:${source.hashCode}:$isDark'),
+    );
+
+/// Drops the cached diagram keys. Call when switching to a different document
+/// so keys for diagrams that no longer exist do not accumulate.
+void clearMermaidViewKeyCache() => _mermaidViewKeys.clear();
+
 /// A scrollable Markdown viewer with syntax-highlighted code blocks,
 /// clickable links, ```mermaid``` diagram rendering, and image support
 /// relative to [basePath].
@@ -23,6 +41,7 @@ class MarkdownViewer extends StatelessWidget {
     this.activeMatchIndex = 0,
     this.useGoogleFonts = true,
     this.horizontalPadding = 32,
+    this.onMatchCountResolved,
   });
 
   final String content;
@@ -33,17 +52,26 @@ class MarkdownViewer extends StatelessWidget {
   final bool useGoogleFonts;
   final double horizontalPadding;
 
+  /// Invoked after a build with the total number of highlighted occurrences of
+  /// [searchQuery] in the rendered document, enabling match navigation UI.
+  final ValueChanged<int>? onMatchCountResolved;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final query = searchQuery.trim();
+    // Light mode: warm yellow highlight, keeping the default (dark) text color.
+    // Dark mode: blue highlight with an inverted (dark) text color for contrast.
     final matchBackgroundColor = isDark
-        ? const Color(0xFFFFFF00)
-        : const Color(0xFFFFC107);
+        ? const Color(0xFF44ACFF)
+        : const Color(0xFFFFFBA7);
     final activeMatchBackgroundColor = isDark
-        ? const Color(0xFFFFD600)
-        : const Color(0xFFFF9800);
+        ? const Color(0xFF89D4FF)
+        : const Color(0xFFFFEA6C);
+    // In dark mode invert the text color so it stays legible over the blue
+    // highlight; in light mode keep the document's own foreground (null).
+    final matchForegroundColor = isDark ? Colors.black : null;
     final codeBackground = isDark
         ? theme.colorScheme.surfaceContainerHighest
         : const Color(0xFFF6F8FA);
@@ -77,8 +105,10 @@ class MarkdownViewer extends StatelessWidget {
             _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
               backgroundColor: matchBackgroundColor,
               activeBackgroundColor: activeMatchBackgroundColor,
+              foregroundColor: matchForegroundColor,
               activeMatchIndex: activeMatchIndex,
               scrollController: scrollController,
+              onMatchCountResolved: onMatchCountResolved,
             ),
         },
         onTapLink: (text, href, title) async {
@@ -266,12 +296,25 @@ class _SearchHighlightBuilder extends MarkdownElementBuilder {
     required this.activeBackgroundColor,
     required this.activeMatchIndex,
     required this.scrollController,
-  });
+    this.foregroundColor,
+    this.onMatchCountResolved,
+  }) {
+    // All match elements are visited synchronously during this frame's build,
+    // so by the time the post-frame callback fires [_matchIndex] equals the
+    // total number of occurrences rendered.
+    if (onMatchCountResolved != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        onMatchCountResolved!(_matchIndex);
+      });
+    }
+  }
 
   final Color backgroundColor;
   final Color activeBackgroundColor;
+  final Color? foregroundColor;
   final int activeMatchIndex;
   final ScrollController scrollController;
+  final ValueChanged<int>? onMatchCountResolved;
   int _matchIndex = 0;
 
   @override
@@ -304,8 +347,11 @@ class _SearchHighlightBuilder extends MarkdownElementBuilder {
     return Text(
       key: isActive ? _activeMatchKey : null,
       element.textContent,
+      // copyWith(color: null) keeps the base foreground, so light mode retains
+      // the document's own text color while dark mode inverts it.
       style: baseStyle.copyWith(
         backgroundColor: isActive ? activeBackgroundColor : backgroundColor,
+        color: foregroundColor,
       ),
     );
   }
@@ -359,7 +405,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     final mermaid = _mermaidSource(element);
     if (mermaid != null && mermaid.trim().isNotEmpty) {
       return MermaidView(
-        key: ValueKey('mermaid:${mermaid.hashCode}:$isDark'),
+        key: _mermaidViewKey(mermaid, isDark),
         code: mermaid,
         isDark: isDark,
         backgroundColor: codeBackground,
