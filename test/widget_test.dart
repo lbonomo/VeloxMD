@@ -1,30 +1,44 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:veloxmd/main.dart';
+import 'package:veloxmd/widgets/markdown_viewer.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('buildHighlightedTextSpan highlights matches', () {
+    final span = buildHighlightedTextSpan(
+      'Hello world, hello VeloxMD',
+      const TextStyle(color: Colors.black),
+      'hello',
+      highlightBackground: Colors.yellow,
+      highlightForeground: Colors.black,
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(span.children, isNotNull);
+    final children = span.children!.cast<TextSpan>();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    expect(children, hasLength(4));
+    expect(children[0].text, 'Hello');
+    expect(children[0].style?.backgroundColor, Colors.yellow);
+    expect(children[1].text, ' world, ');
+    expect(children[2].text, 'hello');
+    expect(children[2].style?.backgroundColor, Colors.yellow);
+    expect(children[3].text, ' VeloxMD');
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('buildHighlightedTextSpan escapes regex characters', () {
+    final span = buildHighlightedTextSpan(
+      'C++ and C++',
+      const TextStyle(color: Colors.black),
+      'C++',
+      highlightBackground: Colors.yellow,
+      highlightForeground: Colors.black,
+    );
+
+    final children = span.children!.cast<TextSpan>();
+
+    expect(children, hasLength(3));
+    expect(children[0].text, 'C++');
+    expect(children[0].style?.backgroundColor, Colors.yellow);
+    expect(children[1].text, ' and ');
+    expect(children[2].text, 'C++');
   });
 }

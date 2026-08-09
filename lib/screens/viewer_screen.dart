@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart' as p;
 import '../widgets/markdown_viewer.dart';
 import '../widgets/toc_panel.dart';
@@ -39,16 +40,38 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   List<TocEntry> _tocEntries = [];
   DocumentStats _stats = DocumentStats.fromMarkdown('');
   final String _version = '0.4.2';
+  double _horizontalMargin = 32;
+  static const double _minMargin = 0;
+  static const double _maxMargin = 320;
   final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   StreamSubscription<FileSystemEvent>? _fileWatchSub;
+  bool _isPickerOpen = false;
 
   @override
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    _loadMarginPreference();
     if (widget.initialFile != null) {
       _openFile(widget.initialFile!);
     }
+  }
+
+  Future<void> _loadMarginPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getDouble('horizontal_margin');
+    if (value != null && mounted) {
+      setState(() => _horizontalMargin = value.clamp(_minMargin, _maxMargin));
+    }
+  }
+
+  Future<void> _setHorizontalMargin(double value) async {
+    final clamped = value.clamp(_minMargin, _maxMargin).toDouble();
+    setState(() => _horizontalMargin = clamped);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('horizontal_margin', clamped);
   }
 
   @override
@@ -56,6 +79,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     windowManager.removeListener(this);
     _fileWatchSub?.cancel();
     _scrollController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -64,13 +89,21 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   // ---------------------------------------------------------------------------
 
   Future<void> _pickAndOpenFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
-      dialogTitle: 'Open Markdown file',
-    );
-    if (result != null && result.files.single.path != null) {
-      await _openFile(result.files.single.path!);
+    // Prevent multiple file picker dialogs from stacking when the button is
+    // clicked repeatedly or the Ctrl+O shortcut fires while one is already open.
+    if (_isPickerOpen) return;
+    _isPickerOpen = true;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
+        dialogTitle: 'Open Markdown file',
+      );
+      if (result != null && result.files.single.path != null) {
+        await _openFile(result.files.single.path!);
+      }
+    } finally {
+      _isPickerOpen = false;
     }
   }
 
@@ -131,6 +164,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             const _ReloadIntent(),
         const SingleActivator(LogicalKeyboardKey.keyT, control: true):
             const _ToggleTocIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true):
+            const _FocusSearchIntent(),
         const SingleActivator(LogicalKeyboardKey.f5): const _ReloadIntent(),
       };
 
@@ -143,6 +178,12 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         ),
         _ToggleTocIntent: CallbackAction<_ToggleTocIntent>(
           onInvoke: (_) => setState(() => _tocVisible = !_tocVisible),
+        ),
+        _FocusSearchIntent: CallbackAction<_FocusSearchIntent>(
+          onInvoke: (_) {
+            _searchFocusNode.requestFocus();
+            return null;
+          },
         ),
       };
 
@@ -183,6 +224,40 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         _filePath != null ? p.basename(_filePath!) : 'VeloxMD',
         style: const TextStyle(fontSize: 16),
       ),
+      bottom: _filePath != null
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(72),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  onChanged: (_) => setState(() {}),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: 'Search in rendered text',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear search',
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                              _searchFocusNode.requestFocus();
+                            },
+                          ),
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : null,
       actions: [
         if (_filePath != null)
           IconButton(
@@ -190,6 +265,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             tooltip: 'Toggle Table of Contents (Ctrl+T)',
             onPressed: () => setState(() => _tocVisible = !_tocVisible),
           ),
+        if (_filePath != null) _buildMarginControl(context),
         IconButton(
           icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
           tooltip: 'Toggle theme',
@@ -214,6 +290,59 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
           onPressed: () => showDialog(
             context: context,
             builder: (context) => const VeloxAboutDialog(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMarginControl(BuildContext context) {
+    return PopupMenuButton<void>(
+      tooltip: 'Text margins',
+      icon: const Icon(Icons.format_indent_increase),
+      itemBuilder: (context) => [
+        PopupMenuItem<void>(
+          enabled: false,
+          child: StatefulBuilder(
+            builder: (context, setInner) {
+              void update(double value) {
+                setInner(() {});
+                _setHorizontalMargin(value);
+              }
+
+              return SizedBox(
+                width: 260,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Text margins'),
+                        Text('${_horizontalMargin.round()} px'),
+                      ],
+                    ),
+                    Slider(
+                      min: _minMargin,
+                      max: _maxMargin,
+                      divisions: ((_maxMargin - _minMargin) / 8).round(),
+                      value: _horizontalMargin,
+                      label: '${_horizontalMargin.round()} px',
+                      onChanged: update,
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => update(32),
+                        icon: const Icon(Icons.restart_alt, size: 18),
+                        label: const Text('Reset'),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -260,6 +389,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             content: _markdownContent,
             scrollController: _scrollController,
             basePath: p.dirname(_filePath!),
+            searchQuery: _searchController.text,
+            horizontalPadding: _horizontalMargin,
           ),
         ),
       ],
@@ -319,4 +450,8 @@ class _ReloadIntent extends Intent {
 
 class _ToggleTocIntent extends Intent {
   const _ToggleTocIntent();
+}
+
+class _FocusSearchIntent extends Intent {
+  const _FocusSearchIntent();
 }

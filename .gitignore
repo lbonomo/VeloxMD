@@ -9,6 +9,8 @@ pubspec.lock
 # IDE
 .idea/
 .vscode/
+.kiro/
+devtools_options.yaml
 
 # Generated
 *.g.dart
