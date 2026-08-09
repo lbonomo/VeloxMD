@@ -119,42 +119,45 @@ class MarkdownViewer extends StatelessWidget {
 
     return Scrollbar(
       controller: scrollController,
-      child: Markdown(
-        key: ValueKey<String>('${searchQuery.trim()}::$activeMatchIndex'),
+      child: SingleChildScrollView(
         controller: scrollController,
-        data: content,
-        selectable: true,
-        shrinkWrap: false,
-        imageDirectory: basePath,
-        extensionSet: buildMarkdownExtensionSet(query),
-        builders: <String, MarkdownElementBuilder>{
-          // Always registered: renders ```mermaid``` blocks as diagrams and
-          // defers other code blocks to the default renderer.
-          'pre': _CodeBlockBuilder(
-            isDark: isDark,
-            codeBackground: codeBackground,
-            codeForeground: theme.colorScheme.onSurface,
-          ),
-          if (query.isNotEmpty)
-            _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
-              backgroundColor: matchBackgroundColor,
-              activeBackgroundColor: activeMatchBackgroundColor,
-              foregroundColor: matchForegroundColor,
-              activeMatchIndex: activeMatchIndex,
-              scrollController: scrollController,
-            ),
-        },
-        onTapLink: (text, href, title) async {
-          if (href == null) return;
-          final uri = Uri.tryParse(href);
-          if (uri != null && await canLaunchUrl(uri)) {
-            await launchUrl(uri);
-          }
-        },
-        styleSheet: _buildStyleSheet(context, isDark),
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,
           vertical: 24,
+        ),
+        child: MarkdownBody(
+          key: ValueKey<String>('${searchQuery.trim()}::$activeMatchIndex'),
+          data: content,
+          selectable: true,
+          shrinkWrap: true,
+          fitContent: false,
+          imageDirectory: basePath,
+          extensionSet: buildMarkdownExtensionSet(query),
+          builders: <String, MarkdownElementBuilder>{
+            // Always registered: renders ```mermaid``` blocks as diagrams and
+            // defers other code blocks to the default renderer.
+            'pre': _CodeBlockBuilder(
+              isDark: isDark,
+              codeBackground: codeBackground,
+              codeForeground: theme.colorScheme.onSurface,
+            ),
+            if (query.isNotEmpty)
+              _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
+                backgroundColor: matchBackgroundColor,
+                activeBackgroundColor: activeMatchBackgroundColor,
+                foregroundColor: matchForegroundColor,
+                activeMatchIndex: activeMatchIndex,
+                scrollController: scrollController,
+              ),
+          },
+          onTapLink: (text, href, title) async {
+            if (href == null) return;
+            final uri = Uri.tryParse(href);
+            if (uri != null && await canLaunchUrl(uri)) {
+              await launchUrl(uri);
+            }
+          },
+          styleSheet: _buildStyleSheet(context, isDark),
         ),
       ),
     );
