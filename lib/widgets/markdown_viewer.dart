@@ -7,14 +7,21 @@ import 'package:markdown/markdown.dart' as md;
 import 'mermaid_view.dart';
 
 /// A scrollable Markdown viewer with syntax-highlighted code blocks,
-/// clickable links, and image support relative to [basePath].
+/// clickable links, ```mermaid``` diagram rendering, and image support
+/// relative to [basePath].
+///
+/// Search matches are highlighted inline. [activeMatchIndex] marks the
+/// currently focused occurrence with a distinct color and scrolls it into
+/// view. [horizontalPadding] controls the left/right content margin.
 class MarkdownViewer extends StatelessWidget {
   const MarkdownViewer({
     super.key,
     required this.content,
     required this.scrollController,
     required this.basePath,
-    required this.searchQuery,
+    this.searchQuery = '',
+    this.activeMatchIndex = 0,
+    this.useGoogleFonts = true,
     this.horizontalPadding = 32,
   });
 
@@ -22,17 +29,21 @@ class MarkdownViewer extends StatelessWidget {
   final ScrollController scrollController;
   final String basePath;
   final String searchQuery;
+  final int activeMatchIndex;
+  final bool useGoogleFonts;
   final double horizontalPadding;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final styleSheet = _buildStyleSheet(context, isDark);
-    final highlightBackground = isDark
-        ? theme.colorScheme.secondaryContainer.withOpacity(0.75)
-        : theme.colorScheme.secondaryContainer;
-    final highlightForeground = theme.colorScheme.onSecondaryContainer;
+    final query = searchQuery.trim();
+    final matchBackgroundColor = isDark
+        ? const Color(0xFFFFFF00)
+        : const Color(0xFFFFC107);
+    final activeMatchBackgroundColor = isDark
+        ? const Color(0xFFFFD600)
+        : const Color(0xFFFF9800);
     final codeBackground = isDark
         ? theme.colorScheme.surfaceContainerHighest
         : const Color(0xFFF6F8FA);
@@ -40,20 +51,36 @@ class MarkdownViewer extends StatelessWidget {
     return Scrollbar(
       controller: scrollController,
       child: Markdown(
+        key: ValueKey<String>('${searchQuery.trim()}::$activeMatchIndex'),
         controller: scrollController,
         data: content,
         selectable: true,
         shrinkWrap: false,
         imageDirectory: basePath,
-        extensionSet: _buildExtensionSet(),
-        builders: _buildBuilders(
-          styleSheet,
-          highlightBackground,
-          highlightForeground,
-          isDark: isDark,
-          codeBackground: codeBackground,
-          codeForeground: theme.colorScheme.onSurface,
+        extensionSet: md.ExtensionSet(
+          md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+          <md.InlineSyntax>[
+            if (query.isNotEmpty) _SearchHighlightSyntax(query),
+            md.EmojiSyntax(),
+            ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
+          ],
         ),
+        builders: <String, MarkdownElementBuilder>{
+          // Always registered: renders ```mermaid``` blocks as diagrams and
+          // defers other code blocks to the default renderer.
+          'pre': _CodeBlockBuilder(
+            isDark: isDark,
+            codeBackground: codeBackground,
+            codeForeground: theme.colorScheme.onSurface,
+          ),
+          if (query.isNotEmpty)
+            _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
+              backgroundColor: matchBackgroundColor,
+              activeBackgroundColor: activeMatchBackgroundColor,
+              activeMatchIndex: activeMatchIndex,
+              scrollController: scrollController,
+            ),
+        },
         onTapLink: (text, href, title) async {
           if (href == null) return;
           final uri = Uri.tryParse(href);
@@ -61,7 +88,7 @@ class MarkdownViewer extends StatelessWidget {
             await launchUrl(uri);
           }
         },
-        styleSheet: styleSheet,
+        styleSheet: _buildStyleSheet(context, isDark),
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,
           vertical: 24,
@@ -70,69 +97,12 @@ class MarkdownViewer extends StatelessWidget {
     );
   }
 
-  md.ExtensionSet _buildExtensionSet() {
-    final inlineSyntaxes = <md.InlineSyntax>[
-      if (searchQuery.trim().isNotEmpty)
-        SearchHighlightSyntax(searchQuery.trim()),
-      md.EmojiSyntax(),
-      ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
-    ];
-    return md.ExtensionSet(
-      md.ExtensionSet.gitHubFlavored.blockSyntaxes,
-      inlineSyntaxes,
-    );
-  }
-
-  Map<String, MarkdownElementBuilder> _buildBuilders(
-    MarkdownStyleSheet styleSheet,
-    Color highlightBackground,
-    Color highlightForeground, {
-    required bool isDark,
-    required Color codeBackground,
-    required Color codeForeground,
-  }) {
-    final query = searchQuery.trim();
-
-    final builders = <String, MarkdownElementBuilder>{
-      // Always registered: renders ```mermaid``` blocks as diagrams and
-      // falls back to (optionally highlighted) code blocks otherwise.
-      'pre': _CodeBlockBuilder(
-        query: query,
-        styleSheet: styleSheet,
-        isDark: isDark,
-        codeBackground: codeBackground,
-        codeForeground: codeForeground,
-        highlightBackground: highlightBackground,
-        highlightForeground: highlightForeground,
-      ),
-    };
-
-    if (query.isNotEmpty) {
-      builders['a'] = _SearchLinkBuilder(
-        query: query,
-        highlightBackground: highlightBackground,
-        highlightForeground: highlightForeground,
-      );
-      builders['code'] = _SearchCodeBuilder(
-        query: query,
-        styleSheet: styleSheet,
-        highlightBackground: highlightBackground,
-        highlightForeground: highlightForeground,
-      );
-      builders['mark'] = _SearchMarkBuilder(
-        query: query,
-        highlightBackground: highlightBackground,
-        highlightForeground: highlightForeground,
-      );
-    }
-
-    return builders;
-  }
-
   MarkdownStyleSheet _buildStyleSheet(BuildContext context, bool isDark) {
     final theme = Theme.of(context);
-    final codeFont = GoogleFonts.firaCode(fontSize: 13.5);
-    final bodyFont = GoogleFonts.inter();
+    final codeFont = useGoogleFonts
+        ? GoogleFonts.firaCode(fontSize: 13.5)
+        : const TextStyle(fontFamily: 'monospace', fontSize: 13.5);
+    final bodyFont = useGoogleFonts ? GoogleFonts.inter() : const TextStyle();
 
     final codeBg = isDark
         ? theme.colorScheme.surfaceContainerHighest
@@ -179,17 +149,12 @@ class MarkdownViewer extends StatelessWidget {
       ),
       code: codeFont.copyWith(
         backgroundColor: codeBg,
-        color: isDark
-            ? theme.colorScheme.primary
-            : const Color(0xFFD63200),
+        color: isDark ? theme.colorScheme.primary : const Color(0xFFD63200),
       ),
       codeblockDecoration: BoxDecoration(
         color: codeBg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant,
-          width: 1,
-        ),
+        border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
       ),
       codeblockPadding: const EdgeInsets.all(16),
       blockquoteDecoration: BoxDecoration(
@@ -201,10 +166,7 @@ class MarkdownViewer extends StatelessWidget {
       blockquotePadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       horizontalRuleDecoration: BoxDecoration(
         border: Border(
-          top: BorderSide(
-            color: theme.colorScheme.outlineVariant,
-            width: 1,
-          ),
+          top: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
         ),
       ),
       tableHead: bodyFont.copyWith(fontWeight: FontWeight.bold),
@@ -227,6 +189,8 @@ class MarkdownViewer extends StatelessWidget {
   }
 }
 
+/// Splits [text] into styled spans, applying a highlight background/foreground
+/// to every case-insensitive occurrence of [query]. Exposed for unit testing.
 TextSpan buildHighlightedTextSpan(
   String text,
   TextStyle? baseStyle,
@@ -278,147 +242,89 @@ TextSpan buildHighlightedTextSpan(
   return TextSpan(children: spans, style: baseStyle);
 }
 
-class SearchHighlightSyntax extends md.InlineSyntax {
-  SearchHighlightSyntax(String query)
+/// Inline syntax that wraps every search match in a [tag] element so it can be
+/// rendered with a highlight by [_SearchHighlightBuilder].
+class _SearchHighlightSyntax extends md.InlineSyntax {
+  _SearchHighlightSyntax(String query)
       : super(RegExp.escape(query), caseSensitive: false);
+
+  static const tag = 'search-highlight';
 
   @override
   bool onMatch(md.InlineParser parser, Match match) {
-    parser.addNode(md.Element.text('mark', match.group(0)!));
+    parser.addNode(md.Element.text(tag, match[0]!));
     return true;
   }
 }
 
-class _SearchMarkBuilder extends MarkdownElementBuilder {
-  _SearchMarkBuilder({
-    required this.query,
-    required this.highlightBackground,
-    required this.highlightForeground,
+/// Renders a highlighted search match. The occurrence at [activeMatchIndex]
+/// gets [activeBackgroundColor] and is scrolled into view; the rest use
+/// [backgroundColor].
+class _SearchHighlightBuilder extends MarkdownElementBuilder {
+  _SearchHighlightBuilder({
+    required this.backgroundColor,
+    required this.activeBackgroundColor,
+    required this.activeMatchIndex,
+    required this.scrollController,
   });
 
-  final String query;
-  final Color highlightBackground;
-  final Color highlightForeground;
+  final Color backgroundColor;
+  final Color activeBackgroundColor;
+  final int activeMatchIndex;
+  final ScrollController scrollController;
+  int _matchIndex = 0;
 
   @override
-  Widget? visitElementAfterWithContext(
+  Widget visitElementAfterWithContext(
     BuildContext context,
     md.Element element,
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
-    return SelectableText.rich(
-      buildHighlightedTextSpan(
-        element.textContent,
-        preferredStyle ?? parentStyle,
-        query,
-        highlightBackground: highlightBackground,
-        highlightForeground: highlightForeground,
-      ),
-      textScaler: MediaQuery.textScalerOf(context),
-    );
-  }
-}
+    final currentMatchIndex = _matchIndex++;
+    final isActive = currentMatchIndex == activeMatchIndex;
 
-class _SearchLinkBuilder extends MarkdownElementBuilder {
-  _SearchLinkBuilder({
-    required this.query,
-    required this.highlightBackground,
-    required this.highlightForeground,
-  });
-
-  final String query;
-  final Color highlightBackground;
-  final Color highlightForeground;
-
-  @override
-  Widget? visitElementAfterWithContext(
-    BuildContext context,
-    md.Element element,
-    TextStyle? preferredStyle,
-    TextStyle? parentStyle,
-  ) {
-    final href = element.attributes['href'];
-    if (href == null) {
-      return null;
+    if (isActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!scrollController.hasClients) return;
+        final context = _activeMatchKey.currentContext;
+        if (context != null) {
+          Scrollable.ensureVisible(
+            context,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            alignment: 0.2,
+          );
+        }
+      });
     }
 
-    final style = (preferredStyle ?? parentStyle)?.copyWith(
-      color: Theme.of(context).colorScheme.primary,
-      decoration: TextDecoration.underline,
-      decorationColor: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-    );
+    final baseStyle = preferredStyle ?? parentStyle ?? const TextStyle();
 
-    return SelectableText.rich(
-      buildHighlightedTextSpan(
-        element.textContent,
-        style,
-        query,
-        highlightBackground: highlightBackground,
-        highlightForeground: highlightForeground,
+    return Text(
+      key: isActive ? _activeMatchKey : null,
+      element.textContent,
+      style: baseStyle.copyWith(
+        backgroundColor: isActive ? activeBackgroundColor : backgroundColor,
       ),
-      textScaler: MediaQuery.textScalerOf(context),
-      onTap: () async {
-        final uri = Uri.tryParse(href);
-        if (uri != null && await canLaunchUrl(uri)) {
-          await launchUrl(uri);
-        }
-      },
     );
   }
+
+  final GlobalKey _activeMatchKey = GlobalKey();
 }
 
-class _SearchCodeBuilder extends MarkdownElementBuilder {
-  _SearchCodeBuilder({
-    required this.query,
-    required this.styleSheet,
-    required this.highlightBackground,
-    required this.highlightForeground,
-  });
-
-  final String query;
-  final MarkdownStyleSheet styleSheet;
-  final Color highlightBackground;
-  final Color highlightForeground;
-
-  @override
-  Widget? visitElementAfterWithContext(
-    BuildContext context,
-    md.Element element,
-    TextStyle? preferredStyle,
-    TextStyle? parentStyle,
-  ) {
-    return SelectableText.rich(
-      buildHighlightedTextSpan(
-        element.textContent,
-        preferredStyle ?? styleSheet.code,
-        query,
-        highlightBackground: highlightBackground,
-        highlightForeground: highlightForeground,
-      ),
-      textScaler: MediaQuery.textScalerOf(context),
-    );
-  }
-}
-
+/// Renders ```mermaid``` fenced code blocks as diagrams via [MermaidView] and
+/// defers all other code blocks to the default renderer.
 class _CodeBlockBuilder extends MarkdownElementBuilder {
   _CodeBlockBuilder({
-    required this.query,
-    required this.styleSheet,
     required this.isDark,
     required this.codeBackground,
     required this.codeForeground,
-    required this.highlightBackground,
-    required this.highlightForeground,
   });
 
-  final String query;
-  final MarkdownStyleSheet styleSheet;
   final bool isDark;
   final Color codeBackground;
   final Color codeForeground;
-  final Color highlightBackground;
-  final Color highlightForeground;
 
   @override
   bool isBlockElement() => true;
@@ -461,27 +367,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       );
     }
 
-    // Not a mermaid block. Without a search query, defer to the default
-    // code-block rendering by returning null.
-    if (query.isEmpty) {
-      return null;
-    }
-
-    // With an active query, render the code with search highlighting. The
-    // surrounding decoration is provided by flutter_markdown's `pre` wrapper.
-    return SingleChildScrollView(
-      padding: styleSheet.codeblockPadding,
-      scrollDirection: Axis.horizontal,
-      child: SelectableText.rich(
-        buildHighlightedTextSpan(
-          element.textContent,
-          styleSheet.code,
-          query,
-          highlightBackground: highlightBackground,
-          highlightForeground: highlightForeground,
-        ),
-        textScaler: MediaQuery.textScalerOf(context),
-      ),
-    );
+    // Not a mermaid block: defer to flutter_markdown's default code rendering.
+    return null;
   }
 }
