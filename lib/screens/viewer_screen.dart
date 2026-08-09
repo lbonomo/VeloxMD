@@ -46,6 +46,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
+  int _activeMatchIndex = 0;
+  int _matchCount = 0;
   StreamSubscription<FileSystemEvent>? _fileWatchSub;
   bool _isPickerOpen = false;
 
@@ -108,6 +110,11 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   }
 
   Future<void> _openFile(String path) async {
+    // Different document: drop cached diagram keys from the previous file so
+    // stale GlobalKeys do not accumulate across opens.
+    if (path != _filePath) {
+      clearMermaidViewKeyCache();
+    }
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -151,6 +158,44 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     } catch (_) {
       // Silently ignore reload errors
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Search navigation
+  // ---------------------------------------------------------------------------
+
+  /// Called when the query text changes: resets the active occurrence to the
+  /// first match so navigation restarts from the top.
+  void _onSearchChanged(String _) {
+    setState(() => _activeMatchIndex = 0);
+  }
+
+  /// Records the total number of highlighted occurrences reported by the
+  /// viewer and clamps the active index into range.
+  void _onMatchCountResolved(int count) {
+    if (count == _matchCount &&
+        (_matchCount == 0 || _activeMatchIndex < _matchCount)) {
+      return;
+    }
+    setState(() {
+      _matchCount = count;
+      if (count == 0) {
+        _activeMatchIndex = 0;
+      } else if (_activeMatchIndex >= count) {
+        _activeMatchIndex = count - 1;
+      }
+    });
+  }
+
+  /// Advances the focused highlight to the next match, wrapping around to the
+  /// first after the last. Invoked when the user presses Enter in the search
+  /// field. Focus stays in the field so repeated Enter keeps jumping.
+  void _goToNextMatch() {
+    if (_matchCount == 0) return;
+    setState(() {
+      _activeMatchIndex = (_activeMatchIndex + 1) % _matchCount;
+    });
+    _searchFocusNode.requestFocus();
   }
 
   // ---------------------------------------------------------------------------
@@ -232,21 +277,46 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
                 child: TextField(
                   controller: _searchController,
                   focusNode: _searchFocusNode,
-                  onChanged: (_) => setState(() {}),
+                  onChanged: _onSearchChanged,
+                  onSubmitted: (_) => _goToNextMatch(),
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
                     hintText: 'Search in rendered text',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _searchController.text.isEmpty
                         ? null
-                        : IconButton(
-                            tooltip: 'Clear search',
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                              _searchFocusNode.requestFocus();
-                            },
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: Text(
+                                  _matchCount == 0
+                                      ? 'No results'
+                                      : '${_activeMatchIndex + 1}/$_matchCount',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Clear search',
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _activeMatchIndex = 0;
+                                    _matchCount = 0;
+                                  });
+                                  _searchFocusNode.requestFocus();
+                                },
+                              ),
+                            ],
                           ),
                     filled: true,
                     border: OutlineInputBorder(
@@ -390,6 +460,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             scrollController: _scrollController,
             basePath: p.dirname(_filePath!),
             searchQuery: _searchController.text,
+            activeMatchIndex: _activeMatchIndex,
+            onMatchCountResolved: _onMatchCountResolved,
             horizontalPadding: _horizontalMargin,
           ),
         ),
