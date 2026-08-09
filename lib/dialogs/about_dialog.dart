@@ -1,17 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class VeloxAboutDialog extends StatelessWidget {
+import '../services/update_checker.dart';
+
+class VeloxAboutDialog extends StatefulWidget {
   const VeloxAboutDialog({super.key});
 
   static const String version = '0.5.0';
   static const String repositoryUrl = 'https://github.com/lbonomo/VeloxMD';
   static const String issuesUrl = '$repositoryUrl/issues';
   static const String discussionsUrl = '$repositoryUrl/discussions';
+  static const String repoOwner = 'lbonomo';
+  static const String repoName = 'VeloxMD';
   static const String developerName = 'Lucas Bonomo';
   static const String developerWebsite = 'https://lucasbonomo.com';
   static const String developerGithub = 'https://github.com/lbonomo';
   static const String developerLinkedin = 'https://www.linkedin.com/in/lbonomo/';
+
+  @override
+  State<VeloxAboutDialog> createState() => _VeloxAboutDialogState();
+}
+
+class _VeloxAboutDialogState extends State<VeloxAboutDialog> {
+  bool _checking = false;
+  String? _errorMessage;
+  UpdateCheckResult? _result;
 
   Future<void> _launchUrl(String url) async {
     if (!await launchUrl(Uri.parse(url),
@@ -20,9 +33,104 @@ class VeloxAboutDialog extends StatelessWidget {
     }
   }
 
+  Future<void> _checkForUpdates() async {
+    setState(() {
+      _checking = true;
+      _errorMessage = null;
+      _result = null;
+    });
+
+    try {
+      final result = await UpdateChecker.checkGitHubUpdate(
+        owner: VeloxAboutDialog.repoOwner,
+        repo: VeloxAboutDialog.repoName,
+        currentVersion: VeloxAboutDialog.version,
+      );
+      if (!mounted) return;
+      setState(() => _result = result);
+    } on UpdateCheckException catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = e.message);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = 'Error inesperado: $e');
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  Widget _buildUpdateSection(ThemeData theme) {
+    final children = <Widget>[
+      OutlinedButton.icon(
+        onPressed: _checking ? null : _checkForUpdates,
+        icon: _checking
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.system_update_alt, size: 16),
+        label: Text(_checking ? 'Checking…' : 'Check for updates'),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+      ),
+    ];
+
+    if (_errorMessage != null) {
+      children.add(const SizedBox(height: 8));
+      children.add(Text(
+        _errorMessage!,
+        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+      ));
+    } else if (_result != null) {
+      final r = _result!;
+      children.add(const SizedBox(height: 8));
+      if (r.updateAvailable) {
+        children.add(Text(
+          'New version v${r.latestVersion} available '
+          '(you have v${r.currentVersion}).',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.primary,
+          ),
+        ));
+        if (r.downloadUrl != null) {
+          children.add(const SizedBox(height: 8));
+          children.add(FilledButton.icon(
+            onPressed: () => _launchUrl(r.downloadUrl!),
+            icon: const Icon(Icons.download, size: 16),
+            label: Text('Download v${r.latestVersion}'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ));
+        }
+      } else {
+        children.add(Text(
+          "You're on the latest version (v${r.currentVersion}).",
+          style: theme.textTheme.bodySmall,
+        ));
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    const version = VeloxAboutDialog.version;
+    const repositoryUrl = VeloxAboutDialog.repositoryUrl;
+    const issuesUrl = VeloxAboutDialog.issuesUrl;
+    const discussionsUrl = VeloxAboutDialog.discussionsUrl;
+    const developerName = VeloxAboutDialog.developerName;
+    const developerWebsite = VeloxAboutDialog.developerWebsite;
+    const developerGithub = VeloxAboutDialog.developerGithub;
+    const developerLinkedin = VeloxAboutDialog.developerLinkedin;
 
     return Dialog(
       child: Container(
@@ -59,6 +167,10 @@ class VeloxAboutDialog extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+
+              // Update checker
+              _buildUpdateSection(theme),
               const SizedBox(height: 20),
 
               // Project Goal
