@@ -16,13 +16,19 @@ devtools_options.yaml
 *.freezed.dart
 
 # Linux build
-linux/flutter/
+linux/flutter/ephemeral/
+linux/flutter/generated_plugins.cmake
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
 
 # macOS build
 macos/Flutter/
 
 # Windows build
-windows/flutter/
+windows/flutter/ephemeral/
+windows/flutter/generated_plugins.cmake
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
 
 # Test
 coverage/
