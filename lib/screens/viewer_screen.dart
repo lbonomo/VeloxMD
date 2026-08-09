@@ -129,6 +129,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         _stats = DocumentStats.fromMarkdown(content);
         _isLoading = false;
         _tocEntries = TocEntry.fromMarkdown(content);
+        _recomputeMatchCount();
       });
       await windowManager.setTitle(p.basename(path));
     } on FileServiceException catch (e) {
@@ -154,6 +155,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         _markdownContent = content;
         _stats = DocumentStats.fromMarkdown(content);
         _tocEntries = TocEntry.fromMarkdown(content);
+        _recomputeMatchCount();
       });
     } catch (_) {
       // Silently ignore reload errors
@@ -164,27 +166,29 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   // Search navigation
   // ---------------------------------------------------------------------------
 
-  /// Called when the query text changes: resets the active occurrence to the
-  /// first match so navigation restarts from the top.
-  void _onSearchChanged(String _) {
-    setState(() => _activeMatchIndex = 0);
+  /// Called when the query text changes: recomputes the match count and resets
+  /// the active occurrence to the first match so navigation restarts from top.
+  void _onSearchChanged(String query) {
+    setState(() {
+      _matchCount = countHighlightMatches(_markdownContent, query);
+      _activeMatchIndex = 0;
+    });
   }
 
-  /// Records the total number of highlighted occurrences reported by the
-  /// viewer and clamps the active index into range.
-  void _onMatchCountResolved(int count) {
-    if (count == _matchCount &&
-        (_matchCount == 0 || _activeMatchIndex < _matchCount)) {
-      return;
+  /// Recomputes the match count for the current query against the current
+  /// document and clamps the active index into range. Call after the document
+  /// content changes (open/reload) so the counter stays accurate.
+  void _recomputeMatchCount() {
+    final count = countHighlightMatches(
+      _markdownContent,
+      _searchController.text,
+    );
+    _matchCount = count;
+    if (count == 0) {
+      _activeMatchIndex = 0;
+    } else if (_activeMatchIndex >= count) {
+      _activeMatchIndex = count - 1;
     }
-    setState(() {
-      _matchCount = count;
-      if (count == 0) {
-        _activeMatchIndex = 0;
-      } else if (_activeMatchIndex >= count) {
-        _activeMatchIndex = count - 1;
-      }
-    });
   }
 
   /// Advances the focused highlight to the next match, wrapping around to the
@@ -461,7 +465,6 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             basePath: p.dirname(_filePath!),
             searchQuery: _searchController.text,
             activeMatchIndex: _activeMatchIndex,
-            onMatchCountResolved: _onMatchCountResolved,
             horizontalPadding: _horizontalMargin,
           ),
         ),
