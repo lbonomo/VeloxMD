@@ -208,6 +208,18 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   /// first after the last. Invoked when the user presses Enter in the search
   /// field. Focus stays in the field so repeated Enter keeps jumping.
   void _goToNextMatch() {
+    // If a debounced query is still pending, apply it now so Enter acts on the
+    // exact text the user typed and lands on the first match.
+    if (_searchDebounce?.isActive ?? false) {
+      _searchDebounce!.cancel();
+      setState(() {
+        _searchQuery = _searchController.text;
+        _matchCount = countHighlightMatches(_markdownContent, _searchQuery);
+        _activeMatchIndex = 0;
+      });
+      _searchFocusNode.requestFocus();
+      return;
+    }
     if (_matchCount == 0) return;
     setState(() {
       _activeMatchIndex = (_activeMatchIndex + 1) % _matchCount;

@@ -11,6 +11,19 @@
   - Gracefully falls back to showing the raw diagram source if the Chromium
     engine is unavailable.
 
+### 🔌 Offline
+- **100% offline fonts**: removed the `google_fonts` dependency, which downloaded
+  Inter and Fira Code at runtime on first use. The fonts are now bundled as local
+  assets in `assets/fonts/` (Inter 400/600/700, Fira Code 400) with their SIL Open
+  Font License, so typography is consistent and the app makes **no network requests**.
+- Added an always-on Kiro steering rule (`.kiro/steering/offline.md`) documenting the
+  offline requirement for future changes.
+
+### ⚡ Performance
+- **Debounced search**: typing in the search box no longer re-parses and re-renders
+  the whole document on every keystroke. The query is applied after a short pause
+  (180 ms); pressing Enter flushes it immediately. Noticeably smoother on large files.
+
 ---
 
 ## 0.4.5 - 2026-08-04
