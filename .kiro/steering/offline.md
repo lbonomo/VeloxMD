@@ -23,6 +23,15 @@ descarga ni consume recursos de red en tiempo de ejecución.
   con `launchUrl` **a petición explícita del usuario** (p. ej. el diálogo
   "Acerca de"); no se consultan automáticamente.
 
+## Excepción: comprobación de actualizaciones
+
+El diálogo "Acerca de" incluye un botón **"Check for updates"** que consulta la
+GitHub Releases API (`UpdateChecker.checkGitHubUpdate`). Esta es la **única**
+petición HTTP permitida en runtime y solo se dispara por **acción explícita del
+usuario** (clic en el botón), nunca automáticamente al iniciar ni durante el uso
+normal. Cumple el mismo espíritu que la regla de `launchUrl`. No agregar más
+llamadas de red fuera de esta excepción.
+
 ## Al agregar código nuevo
 
 Antes de introducir una dependencia o recurso, verificar que no requiera red.
