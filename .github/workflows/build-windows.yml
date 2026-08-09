@@ -4,6 +4,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build for and upload to (leave empty to use the latest release)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -16,16 +21,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Resolve latest release tag
+      - name: Resolve release tag
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
-          $tag = gh release view --json tagName --jq .tagName
-          if ([string]::IsNullOrWhiteSpace($tag)) {
-            throw "Could not resolve latest release tag."
+          if ($env:EVENT_NAME -eq "release") {
+            # Triggered by a published release: use the tag from the event itself.
+            $tag = $env:EVENT_TAG
+          }
+          elseif (-not [string]::IsNullOrWhiteSpace($env:INPUT_TAG)) {
+            # Manual run with an explicit tag.
+            $tag = $env:INPUT_TAG
+          }
+          else {
+            # Manual run without a tag: fall back to the latest release.
+            $tag = gh release view --json tagName --jq .tagName
           }
 
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            throw "Could not resolve a release tag."
+          }
+
+          Write-Host "Resolved release tag: $tag (event: $env:EVENT_NAME)"
           "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
 
       - name: Validate release exists
