@@ -71,6 +71,7 @@ Otherwise, see [Building from source](#building-from-source) below.
 - **Show the table of contents:** press `Ctrl+T`.
 - **Switch light / dark theme:** use the toggle in the toolbar.
 - **Reload a file:** press `Ctrl+R` or `F5`.
+- **Change font size:** press `Ctrl++`, `Ctrl+-`, or `Ctrl+0`.
 
 ### Keyboard shortcuts
 
@@ -78,6 +79,7 @@ Otherwise, see [Building from source](#building-from-source) below.
 |----------|--------|
 | `Ctrl+O` | Open a file |
 | `Ctrl+T` | Show / hide the table of contents |
+| `Ctrl++` / `Ctrl+-` / `Ctrl+0` | Increase / decrease / reset font size |
 | `Ctrl+R` / `F5` | Reload the current file |
 | `Ctrl+Q` | Quit |
 

@@ -43,6 +43,10 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   double _horizontalMargin = 32;
   static const double _minMargin = 0;
   static const double _maxMargin = 320;
+  double _fontScale = 1.0;
+  static const double _minFontScale = 0.5;
+  static const double _maxFontScale = 3.0;
+  static const double _fontScaleStep = 0.1;
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
@@ -64,6 +68,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     super.initState();
     windowManager.addListener(this);
     _loadMarginPreference();
+    _loadFontScalePreference();
     if (widget.initialFile != null) {
       _openFile(widget.initialFile!);
     }
@@ -83,6 +88,26 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('horizontal_margin', clamped);
   }
+
+  Future<void> _loadFontScalePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getDouble('font_scale');
+    if (value != null && mounted) {
+      setState(
+        () => _fontScale = value.clamp(_minFontScale, _maxFontScale).toDouble(),
+      );
+    }
+  }
+
+  Future<void> _setFontScale(double value) async {
+    final clamped = value.clamp(_minFontScale, _maxFontScale).toDouble();
+    setState(() => _fontScale = clamped);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('font_scale', clamped);
+  }
+
+  Future<void> _changeFontScale(double delta) =>
+      _setFontScale(_fontScale + delta);
 
   @override
   void dispose() {
@@ -250,6 +275,21 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             const _ToggleTocIntent(),
         const SingleActivator(LogicalKeyboardKey.keyF, control: true):
             const _FocusSearchIntent(),
+        const SingleActivator(
+          LogicalKeyboardKey.equal,
+          control: true,
+          shift: true,
+        ): const _IncreaseFontSizeIntent(),
+        const SingleActivator(LogicalKeyboardKey.numpadAdd, control: true):
+            const _IncreaseFontSizeIntent(),
+        const SingleActivator(LogicalKeyboardKey.minus, control: true):
+            const _DecreaseFontSizeIntent(),
+        const SingleActivator(LogicalKeyboardKey.numpadSubtract, control: true):
+            const _DecreaseFontSizeIntent(),
+        const SingleActivator(LogicalKeyboardKey.digit0, control: true):
+            const _ResetFontSizeIntent(),
+        const SingleActivator(LogicalKeyboardKey.numpad0, control: true):
+            const _ResetFontSizeIntent(),
         const SingleActivator(LogicalKeyboardKey.f5): const _ReloadIntent(),
       };
 
@@ -268,6 +308,15 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             _searchFocusNode.requestFocus();
             return null;
           },
+        ),
+        _IncreaseFontSizeIntent: CallbackAction<_IncreaseFontSizeIntent>(
+          onInvoke: (_) => _changeFontScale(_fontScaleStep),
+        ),
+        _DecreaseFontSizeIntent: CallbackAction<_DecreaseFontSizeIntent>(
+          onInvoke: (_) => _changeFontScale(-_fontScaleStep),
+        ),
+        _ResetFontSizeIntent: CallbackAction<_ResetFontSizeIntent>(
+          onInvoke: (_) => _setFontScale(1.0),
         ),
       };
 
@@ -503,6 +552,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             searchQuery: _searchQuery,
             activeMatchIndex: _activeMatchIndex,
             horizontalPadding: _horizontalMargin,
+            fontScale: _fontScale,
           ),
         ),
       ],
@@ -566,4 +616,16 @@ class _ToggleTocIntent extends Intent {
 
 class _FocusSearchIntent extends Intent {
   const _FocusSearchIntent();
+}
+
+class _IncreaseFontSizeIntent extends Intent {
+  const _IncreaseFontSizeIntent();
+}
+
+class _DecreaseFontSizeIntent extends Intent {
+  const _DecreaseFontSizeIntent();
+}
+
+class _ResetFontSizeIntent extends Intent {
+  const _ResetFontSizeIntent();
 }

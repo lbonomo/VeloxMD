@@ -275,4 +275,28 @@ void main() {
       findsWidgets,
     );
   });
+
+  test('buildViewerMarkdownStyleSheet scales font sizes', () {
+    final theme = ThemeData.light().copyWith(
+      textTheme: const TextTheme(bodyMedium: TextStyle(fontSize: 14)),
+    );
+
+    final normal = buildViewerMarkdownStyleSheet(
+      theme,
+      isDark: false,
+      useBundledFonts: true,
+      fontScale: 1.0,
+    );
+    final zoomed = buildViewerMarkdownStyleSheet(
+      theme,
+      isDark: false,
+      useBundledFonts: true,
+      fontScale: 1.5,
+    );
+
+    expect(normal.p?.fontSize, 16);
+    expect(zoomed.p?.fontSize, 24);
+    expect(normal.h1?.fontSize, 32);
+    expect(zoomed.h1?.fontSize, 48);
+  });
 }
