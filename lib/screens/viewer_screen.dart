@@ -14,6 +14,7 @@ import '../dialogs/about_dialog.dart';
 import '../models/toc_entry.dart';
 import '../models/document_stats.dart';
 import '../services/file_service.dart';
+import '../services/keybindings_service.dart';
 
 class ViewerScreen extends StatefulWidget {
   const ViewerScreen({
@@ -21,11 +22,13 @@ class ViewerScreen extends StatefulWidget {
     this.initialFile,
     required this.themeMode,
     required this.onThemeModeChanged,
+    required this.keybindings,
   });
 
   final String? initialFile;
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final KeybindingsService keybindings;
 
   @override
   State<ViewerScreen> createState() => _ViewerScreenState();
@@ -267,30 +270,20 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   // ---------------------------------------------------------------------------
 
   Map<ShortcutActivator, Intent> get _shortcuts => {
-        const SingleActivator(LogicalKeyboardKey.keyO, control: true):
-            const _OpenFileIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyR, control: true):
-            const _ReloadIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyT, control: true):
-            const _ToggleTocIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true):
-            const _FocusSearchIntent(),
-        const SingleActivator(
-          LogicalKeyboardKey.equal,
-          control: true,
-          shift: true,
-        ): const _IncreaseFontSizeIntent(),
-        const SingleActivator(LogicalKeyboardKey.numpadAdd, control: true):
-            const _IncreaseFontSizeIntent(),
-        const SingleActivator(LogicalKeyboardKey.minus, control: true):
-            const _DecreaseFontSizeIntent(),
-        const SingleActivator(LogicalKeyboardKey.numpadSubtract, control: true):
-            const _DecreaseFontSizeIntent(),
-        const SingleActivator(LogicalKeyboardKey.digit0, control: true):
-            const _ResetFontSizeIntent(),
-        const SingleActivator(LogicalKeyboardKey.numpad0, control: true):
-            const _ResetFontSizeIntent(),
-        const SingleActivator(LogicalKeyboardKey.f5): const _ReloadIntent(),
+        for (final a in widget.keybindings[KeyAction.openFile])
+          a: const _OpenFileIntent(),
+        for (final a in widget.keybindings[KeyAction.reload])
+          a: const _ReloadIntent(),
+        for (final a in widget.keybindings[KeyAction.toggleToc])
+          a: const _ToggleTocIntent(),
+        for (final a in widget.keybindings[KeyAction.focusSearch])
+          a: const _FocusSearchIntent(),
+        for (final a in widget.keybindings[KeyAction.increaseFontSize])
+          a: const _IncreaseFontSizeIntent(),
+        for (final a in widget.keybindings[KeyAction.decreaseFontSize])
+          a: const _DecreaseFontSizeIntent(),
+        for (final a in widget.keybindings[KeyAction.resetFontSize])
+          a: const _ResetFontSizeIntent(),
       };
 
   Map<Type, Action<Intent>> get _actions => {
@@ -422,7 +415,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         if (_filePath != null)
           IconButton(
             icon: Icon(_tocVisible ? Icons.list_alt : Icons.list),
-            tooltip: 'Toggle Table of Contents (Ctrl+T)',
+            tooltip:
+                'Toggle Table of Contents (${widget.keybindings.label(KeyAction.toggleToc)})',
             onPressed: () => setState(() => _tocVisible = !_tocVisible),
           ),
         if (_filePath != null) _buildMarginControl(context),
@@ -436,12 +430,14 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         if (_filePath != null)
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Reload (Ctrl+R / F5)',
+            tooltip:
+                'Reload (${widget.keybindings.labels(KeyAction.reload).join(' / ')})',
             onPressed: _reloadFile,
           ),
         IconButton(
           icon: const Icon(Icons.folder_open),
-          tooltip: 'Open file (Ctrl+O)',
+          tooltip:
+              'Open file (${widget.keybindings.label(KeyAction.openFile)})',
           onPressed: _pickAndOpenFile,
         ),
         IconButton(
@@ -591,7 +587,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
           ),
           const SizedBox(height: 12),
           Text(
-            'or drop a .md / .mdc file anywhere\nKeyboard: Ctrl+O',
+            'or drop a .md / .mdc file anywhere\n'
+            'Keyboard: ${widget.keybindings.label(KeyAction.openFile)}',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall,
           ),

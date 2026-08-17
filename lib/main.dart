@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'app.dart';
+import 'services/keybindings_service.dart';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,5 +25,9 @@ void main(List<String> args) async {
   // Support opening a file passed as a command-line argument.
   final String? initialFile = args.isNotEmpty ? args.first : null;
 
-  runApp(VeloxMDApp(initialFile: initialFile));
+  // Keyboard shortcuts are resolved from the user's XDG/AppData config
+  // instead of being hardcoded (see services/keybindings_service.dart).
+  final keybindings = await KeybindingsService.load();
+
+  runApp(VeloxMDApp(initialFile: initialFile, keybindings: keybindings));
 }

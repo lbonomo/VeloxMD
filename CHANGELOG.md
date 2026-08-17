@@ -19,6 +19,12 @@
 - Added an always-on Kiro steering rule (`.kiro/steering/offline.md`) documenting the
   offline requirement for future changes.
 
+### ⌨️ Keyboard shortcuts
+- **Configurable shortcuts**: key bindings (open file, reload, font size, quit,
+  etc.) are no longer hardcoded. They're read from an XDG-compliant config file
+  (`$XDG_CONFIG_HOME/veloxmd/keybindings.json`, `%APPDATA%\veloxmd\keybindings.json`
+  on Windows), created with the previous defaults on first run and editable by hand.
+
 ### ⚡ Performance
 - **Debounced search**: typing in the search box no longer re-parses and re-renders
   the whole document on every keystroke. The query is applied after a short pause

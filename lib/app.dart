@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'screens/viewer_screen.dart';
+import 'services/keybindings_service.dart';
 
 class VeloxMDApp extends StatefulWidget {
-  const VeloxMDApp({super.key, this.initialFile});
+  const VeloxMDApp({super.key, this.initialFile, required this.keybindings});
 
   final String? initialFile;
+  final KeybindingsService keybindings;
 
   @override
   State<VeloxMDApp> createState() => _VeloxMDAppState();
@@ -57,8 +58,8 @@ class _VeloxMDAppState extends State<VeloxMDApp> {
       darkTheme: _buildDarkTheme(),
       shortcuts: {
         ...WidgetsApp.defaultShortcuts,
-        const SingleActivator(LogicalKeyboardKey.keyQ, control: true):
-            const _QuitIntent(),
+        for (final activator in widget.keybindings[KeyAction.quit])
+          activator: const _QuitIntent(),
       },
       actions: {
         ...WidgetsApp.defaultActions,
@@ -70,6 +71,7 @@ class _VeloxMDAppState extends State<VeloxMDApp> {
         initialFile: widget.initialFile,
         themeMode: _themeMode,
         onThemeModeChanged: _setThemeMode,
+        keybindings: widget.keybindings,
       ),
     );
   }
