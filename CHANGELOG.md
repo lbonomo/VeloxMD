@@ -26,6 +26,13 @@
 
 ---
 
+## 1.0.1 - 2026-08-17
+
+### 🐛 Fixes
+- Restored the table of contents, including empty-state display and improved ATX heading parsing.
+
+---
+
 ## 0.4.5 - 2026-08-04
 
 ### 📦 Version Bump

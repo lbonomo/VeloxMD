@@ -8,8 +8,8 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart' as p;
 import '../widgets/markdown_viewer.dart';
-import '../widgets/toc_panel.dart';
 import '../widgets/document_footer.dart';
+import '../widgets/toc_panel.dart';
 import '../dialogs/about_dialog.dart';
 import '../models/toc_entry.dart';
 import '../models/document_stats.dart';
@@ -39,7 +39,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   bool _tocVisible = false;
   List<TocEntry> _tocEntries = [];
   DocumentStats _stats = DocumentStats.fromMarkdown('');
-  final String _version = '1.0.0';
+  final String _version = '1.0.1';
   double _horizontalMargin = 32;
   static const double _minMargin = 0;
   static const double _maxMargin = 320;
@@ -539,7 +539,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
 
     return Row(
       children: [
-        if (_tocVisible && _tocEntries.isNotEmpty)
+        if (_tocVisible)
           TocPanel(
             entries: _tocEntries,
             scrollController: _scrollController,
