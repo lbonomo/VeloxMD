@@ -110,6 +110,31 @@ the main-row key or the numpad's), so you don't need to list both explicitly.
 
 Supported file types: `.md`, `.markdown`, `.mdc`, and `.txt`.
 
+### Fonts
+
+By default VeloxMD renders with your desktop's own fonts, not a fixed
+bundled font: on Linux it asks fontconfig (`fc-match`) for the current
+sans-serif and monospace fonts; on Windows it uses the system defaults
+(Segoe UI / Consolas). If the desktop's font can't be determined (e.g.
+`fc-match` isn't installed), it falls back to the bundled Inter / FiraCode.
+
+To pin a specific font instead of following the desktop, edit
+`$XDG_CONFIG_HOME/veloxmd/fonts.json` (falls back to
+`~/.config/veloxmd/fonts.json` on Linux/macOS; `%APPDATA%\veloxmd\fonts.json`
+on Windows), created empty on first run:
+
+```json
+{
+  "ui_font": null,
+  "mono_font": null
+}
+```
+
+Set `ui_font` (body text + UI chrome) and/or `mono_font` (code blocks) to an
+installed font family name, e.g. `"ui_font": "Noto Sans"`. Leave a value
+`null` (or omit it) to keep following the desktop's font for that role.
+Restart VeloxMD after editing.
+
 ---
 
 <details>

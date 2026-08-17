@@ -14,6 +14,7 @@ import '../dialogs/about_dialog.dart';
 import '../models/toc_entry.dart';
 import '../models/document_stats.dart';
 import '../services/file_service.dart';
+import '../services/font_service.dart';
 import '../services/keybindings_service.dart';
 
 class ViewerScreen extends StatefulWidget {
@@ -23,12 +24,14 @@ class ViewerScreen extends StatefulWidget {
     required this.themeMode,
     required this.onThemeModeChanged,
     required this.keybindings,
+    required this.fonts,
   });
 
   final String? initialFile;
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
   final KeybindingsService keybindings;
+  final FontConfig fonts;
 
   @override
   State<ViewerScreen> createState() => _ViewerScreenState();
@@ -549,6 +552,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             activeMatchIndex: _activeMatchIndex,
             horizontalPadding: _horizontalMargin,
             fontScale: _fontScale,
+            bodyFontFamily: widget.fonts.uiFontFamily,
+            codeFontFamily: widget.fonts.codeFontFamily,
           ),
         ),
       ],
