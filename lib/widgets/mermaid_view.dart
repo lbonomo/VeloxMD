@@ -286,12 +286,17 @@ class MermaidView extends StatefulWidget {
     required this.isDark,
     required this.backgroundColor,
     required this.foregroundColor,
+    required this.codeFontFamily,
   });
 
   final String code;
   final bool isDark;
   final Color backgroundColor;
   final Color foregroundColor;
+
+  /// Font used when falling back to showing the raw diagram source (CEF
+  /// unavailable), e.g. the desktop's detected monospace font.
+  final String codeFontFamily;
 
   @override
   State<MermaidView> createState() => _MermaidViewState();
@@ -417,6 +422,7 @@ class _MermaidViewState extends State<MermaidView> {
       return _RawFallback(
         code: widget.code,
         foregroundColor: widget.foregroundColor,
+        codeFontFamily: widget.codeFontFamily,
       );
     }
 
@@ -530,6 +536,7 @@ class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
                     ? _RawFallback(
                         code: widget.code,
                         foregroundColor: widget.foregroundColor,
+                        codeFontFamily: widget.codeFontFamily,
                       )
                     : ValueListenableBuilder<bool>(
                         valueListenable: _controller,
@@ -561,10 +568,15 @@ class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
 
 /// Shown when CEF is unavailable: keeps the diagram source visible.
 class _RawFallback extends StatelessWidget {
-  const _RawFallback({required this.code, required this.foregroundColor});
+  const _RawFallback({
+    required this.code,
+    required this.foregroundColor,
+    required this.codeFontFamily,
+  });
 
   final String code;
   final Color foregroundColor;
+  final String codeFontFamily;
 
   @override
   Widget build(BuildContext context) {
@@ -590,7 +602,7 @@ class _RawFallback extends StatelessWidget {
           const SizedBox(height: 8),
           SelectableText(
             code,
-            style: const TextStyle(fontFamily: 'FiraCode', fontSize: 13.5)
+            style: TextStyle(fontFamily: codeFontFamily, fontSize: 13.5)
                 .copyWith(color: foregroundColor),
           ),
         ],

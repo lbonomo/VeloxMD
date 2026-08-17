@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'screens/viewer_screen.dart';
+import 'services/font_service.dart';
+import 'services/keybindings_service.dart';
 
 class VeloxMDApp extends StatefulWidget {
-  const VeloxMDApp({super.key, this.initialFile});
+  const VeloxMDApp({
+    super.key,
+    this.initialFile,
+    required this.keybindings,
+    required this.fonts,
+  });
 
   final String? initialFile;
+  final KeybindingsService keybindings;
+  final FontConfig fonts;
 
   @override
   State<VeloxMDApp> createState() => _VeloxMDAppState();
@@ -57,8 +65,8 @@ class _VeloxMDAppState extends State<VeloxMDApp> {
       darkTheme: _buildDarkTheme(),
       shortcuts: {
         ...WidgetsApp.defaultShortcuts,
-        const SingleActivator(LogicalKeyboardKey.keyQ, control: true):
-            const _QuitIntent(),
+        for (final activator in widget.keybindings[KeyAction.quit])
+          activator: const _QuitIntent(),
       },
       actions: {
         ...WidgetsApp.defaultActions,
@@ -70,6 +78,8 @@ class _VeloxMDAppState extends State<VeloxMDApp> {
         initialFile: widget.initialFile,
         themeMode: _themeMode,
         onThemeModeChanged: _setThemeMode,
+        keybindings: widget.keybindings,
+        fonts: widget.fonts,
       ),
     );
   }
@@ -77,6 +87,7 @@ class _VeloxMDAppState extends State<VeloxMDApp> {
   ThemeData _buildLightTheme() {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: widget.fonts.uiFontFamily,
       colorScheme: ColorScheme.fromSeed(
         seedColor: const Color(0xFF1565C0),
         brightness: Brightness.light,
@@ -87,6 +98,7 @@ class _VeloxMDAppState extends State<VeloxMDApp> {
   ThemeData _buildDarkTheme() {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: widget.fonts.uiFontFamily,
       colorScheme: ColorScheme.fromSeed(
         seedColor: const Color(0xFF1565C0),
         brightness: Brightness.dark,

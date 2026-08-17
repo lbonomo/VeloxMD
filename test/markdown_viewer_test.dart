@@ -285,13 +285,15 @@ void main() {
     final normal = buildViewerMarkdownStyleSheet(
       theme,
       isDark: false,
-      useBundledFonts: true,
+      bodyFontFamily: 'Inter',
+      codeFontFamily: 'FiraCode',
       fontScale: 1.0,
     );
     final zoomed = buildViewerMarkdownStyleSheet(
       theme,
       isDark: false,
-      useBundledFonts: true,
+      bodyFontFamily: 'Inter',
+      codeFontFamily: 'FiraCode',
       fontScale: 1.5,
     );
 

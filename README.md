@@ -75,7 +75,7 @@ Otherwise, see [Building from source](#building-from-source) below.
 
 ### Keyboard shortcuts
 
-| Shortcut | Action |
+| Shortcut (default) | Action |
 |----------|--------|
 | `Ctrl+O` | Open a file |
 | `Ctrl+T` | Show / hide the table of contents |
@@ -83,7 +83,57 @@ Otherwise, see [Building from source](#building-from-source) below.
 | `Ctrl+R` / `F5` | Reload the current file |
 | `Ctrl+Q` | Quit |
 
+These are defaults, not fixed key combinations — VeloxMD reads them from a
+user-editable config file following the XDG Base Directory Specification:
+`$XDG_CONFIG_HOME/veloxmd/keybindings.json` (falls back to
+`~/.config/veloxmd/keybindings.json` on Linux/macOS; `%APPDATA%\veloxmd\keybindings.json`
+on Windows). The file is created with the defaults above on first run — edit
+it and restart VeloxMD to rebind any action. Each action accepts one or more
+combos, e.g.:
+
+`plus`, `equal`, `minus` and `zero` are aliases that match both the main-row
+and numpad variant of a key (e.g. `plus` triggers the `+` key, whether it's
+the main-row key or the numpad's), so you don't need to list both explicitly.
+
+```json
+{
+  "open_file": ["ctrl+o"],
+  "reload": ["ctrl+r", "f5"],
+  "toggle_toc": ["ctrl+t"],
+  "focus_search": ["ctrl+f"],
+  "increase_font_size": ["ctrl+plus"],
+  "decrease_font_size": ["ctrl+minus"],
+  "reset_font_size": ["ctrl+zero"],
+  "quit": ["ctrl+q"]
+}
+```
+
 Supported file types: `.md`, `.markdown`, `.mdc`, and `.txt`.
+
+### Fonts
+
+By default VeloxMD renders with your desktop's own fonts, not a fixed
+bundled font: on Linux it asks fontconfig (`fc-match`) for the current
+sans-serif and monospace fonts; on Windows it uses the system defaults
+(Segoe UI / Consolas). If the desktop's font can't be determined (e.g.
+`fc-match` isn't installed), it falls back to the bundled Inter / FiraCode.
+
+To pin a specific font instead of following the desktop, edit
+`$XDG_CONFIG_HOME/veloxmd/fonts.json` (falls back to
+`~/.config/veloxmd/fonts.json` on Linux/macOS; `%APPDATA%\veloxmd\fonts.json`
+on Windows), created empty on first run:
+
+```json
+{
+  "ui_font": null,
+  "mono_font": null
+}
+```
+
+Set `ui_font` (body text + UI chrome) and/or `mono_font` (code blocks) to an
+installed font family name, e.g. `"ui_font": "Noto Sans"`. Leave a value
+`null` (or omit it) to keep following the desktop's font for that role.
+Restart VeloxMD after editing.
 
 ---
 
