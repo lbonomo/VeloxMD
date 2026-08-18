@@ -69,6 +69,7 @@ Otherwise, see [Building from source](#building-from-source) below.
 - **Open a file:** click the open button, drag a `.md` file onto the window,
   or press `Ctrl+O`.
 - **Show the table of contents:** press `Ctrl+T`.
+- **Open the search panel:** press `Ctrl+F`.
 - **Switch light / dark theme:** use the toggle in the toolbar.
 - **Reload a file:** press `Ctrl+R` or `F5`.
 - **Change font size:** press `Ctrl++`, `Ctrl+-`, or `Ctrl+0`.
@@ -79,6 +80,7 @@ Otherwise, see [Building from source](#building-from-source) below.
 |----------|--------|
 | `Ctrl+O` | Open a file |
 | `Ctrl+T` | Show / hide the table of contents |
+| `Ctrl+F` | Show / hide the search panel |
 | `Ctrl++` / `Ctrl+-` / `Ctrl+0` | Increase / decrease / reset font size |
 | `Ctrl+R` / `F5` | Reload the current file |
 | `Ctrl+Q` | Quit |
