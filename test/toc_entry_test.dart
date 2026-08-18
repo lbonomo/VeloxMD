@@ -40,13 +40,13 @@ void main() {
       expect(entries[1].anchor, 'my-section');
     });
 
-    test('ignores lines that start with # but are inside code blocks', () {
-      // Simple check: headings not starting at column 0 are not parsed,
-      // which is standard ATX heading behaviour.
-      const markdown = '   # Not a heading\n# Real heading\n';
+    test('parses indented ATX headings and strips closing hashes', () {
+      const markdown = '   # Indented heading ###\n# Real heading\n';
       final entries = TocEntry.fromMarkdown(markdown);
-      expect(entries.length, 1);
-      expect(entries.first.title, 'Real heading');
+      expect(entries.length, 2);
+      expect(entries.first.title, 'Indented heading');
+      expect(entries.first.anchor, 'indented-heading');
+      expect(entries.last.title, 'Real heading');
     });
   });
 }

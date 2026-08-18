@@ -41,7 +41,7 @@ class TocEntry {
     return entries;
   }
 
-  static final _headingPattern = RegExp(r'^(#{1,6})\s+(.+)$');
+  static final _headingPattern = RegExp(r'^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$');
 
   static String _toAnchor(String text) => text
       .toLowerCase()

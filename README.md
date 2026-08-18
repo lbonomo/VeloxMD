@@ -72,16 +72,43 @@ Otherwise, see [Building from source](#building-from-source) below.
 - **Open the search panel:** press `Ctrl+F`.
 - **Switch light / dark theme:** use the toggle in the toolbar.
 - **Reload a file:** press `Ctrl+R` or `F5`.
+- **Change font size:** press `Ctrl++`, `Ctrl+-`, or `Ctrl+0`.
 
 ### Keyboard shortcuts
 
-| Shortcut | Action |
+| Shortcut (default) | Action |
 |----------|--------|
 | `Ctrl+O` | Open a file |
 | `Ctrl+T` | Show / hide the table of contents |
 | `Ctrl+F` | Show / hide the search panel |
+| `Ctrl++` / `Ctrl+-` / `Ctrl+0` | Increase / decrease / reset font size |
 | `Ctrl+R` / `F5` | Reload the current file |
 | `Ctrl+Q` | Quit |
+
+These are defaults, not fixed key combinations — VeloxMD reads them from a
+user-editable config file following the XDG Base Directory Specification:
+`$XDG_CONFIG_HOME/veloxmd/keybindings.json` (falls back to
+`~/.config/veloxmd/keybindings.json` on Linux/macOS; `%APPDATA%\veloxmd\keybindings.json`
+on Windows). The file is created with the defaults above on first run — edit
+it and restart VeloxMD to rebind any action. Each action accepts one or more
+combos, e.g.:
+
+`plus`, `equal`, `minus` and `zero` are aliases that match both the main-row
+and numpad variant of a key (e.g. `plus` triggers the `+` key, whether it's
+the main-row key or the numpad's), so you don't need to list both explicitly.
+
+```json
+{
+  "open_file": ["ctrl+o"],
+  "reload": ["ctrl+r", "f5"],
+  "toggle_toc": ["ctrl+t"],
+  "focus_search": ["ctrl+f"],
+  "increase_font_size": ["ctrl+plus"],
+  "decrease_font_size": ["ctrl+minus"],
+  "reset_font_size": ["ctrl+zero"],
+  "quit": ["ctrl+q"]
+}
+```
 
 Supported file types: `.md`, `.markdown`, `.mdc`, and `.txt`.
 

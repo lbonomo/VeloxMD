@@ -11,10 +11,12 @@ import '../widgets/markdown_viewer.dart';
 import '../widgets/search_panel.dart';
 import '../widgets/toc_panel.dart';
 import '../widgets/document_footer.dart';
+import '../widgets/toc_panel.dart';
 import '../dialogs/about_dialog.dart';
 import '../models/toc_entry.dart';
 import '../models/document_stats.dart';
 import '../services/file_service.dart';
+import '../services/keybindings_service.dart';
 
 class ViewerScreen extends StatefulWidget {
   const ViewerScreen({
@@ -22,11 +24,13 @@ class ViewerScreen extends StatefulWidget {
     this.initialFile,
     required this.themeMode,
     required this.onThemeModeChanged,
+    required this.keybindings,
   });
 
   final String? initialFile;
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final KeybindingsService keybindings;
 
   @override
   State<ViewerScreen> createState() => _ViewerScreenState();
@@ -40,10 +44,14 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   bool _tocVisible = false;
   List<TocEntry> _tocEntries = [];
   DocumentStats _stats = DocumentStats.fromMarkdown('');
-  final String _version = '0.5.0';
+  final String _version = VeloxAboutDialog.version;
   double _horizontalMargin = 32;
   static const double _minMargin = 0;
   static const double _maxMargin = 320;
+  double _fontScale = 1.0;
+  static const double _minFontScale = 0.5;
+  static const double _maxFontScale = 3.0;
+  static const double _fontScaleStep = 0.1;
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
@@ -66,6 +74,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     super.initState();
     windowManager.addListener(this);
     _loadMarginPreference();
+    _loadFontScalePreference();
     if (widget.initialFile != null) {
       _openFile(widget.initialFile!);
     }
@@ -85,6 +94,26 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('horizontal_margin', clamped);
   }
+
+  Future<void> _loadFontScalePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getDouble('font_scale');
+    if (value != null && mounted) {
+      setState(
+        () => _fontScale = value.clamp(_minFontScale, _maxFontScale).toDouble(),
+      );
+    }
+  }
+
+  Future<void> _setFontScale(double value) async {
+    final clamped = value.clamp(_minFontScale, _maxFontScale).toDouble();
+    setState(() => _fontScale = clamped);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('font_scale', clamped);
+  }
+
+  Future<void> _changeFontScale(double delta) =>
+      _setFontScale(_fontScale + delta);
 
   @override
   void dispose() {
@@ -106,23 +135,34 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     // clicked repeatedly or the Ctrl+O shortcut fires while one is already open.
     if (_isPickerOpen) return;
     _isPickerOpen = true;
-    // The native file chooser can open behind the app window (e.g. when the
-    // window is pinned "always on top"). Drop that flag while the dialog is
-    // open so the chooser is never covered, and restore it afterwards.
+    // On Linux, some native choosers can still appear behind an always-on-top
+    // app window. Temporarily dropping always-on-top and minimizing the app
+    // guarantees the chooser is visible, then we restore the window state.
     final bool wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
+    var minimizedForPicker = false;
     if (wasAlwaysOnTop) {
       await windowManager.setAlwaysOnTop(false);
+      if (Platform.isLinux) {
+        await windowManager.minimize();
+        minimizedForPicker = true;
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+      }
     }
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
         dialogTitle: 'Open Markdown file',
+        lockParentWindow: true,
       );
       if (result != null && result.files.single.path != null) {
         await _openFile(result.files.single.path!);
       }
     } finally {
+      if (minimizedForPicker) {
+        await windowManager.restore();
+        await windowManager.focus();
+      }
       if (wasAlwaysOnTop) {
         await windowManager.setAlwaysOnTop(true);
       }
@@ -284,15 +324,20 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   // ---------------------------------------------------------------------------
 
   Map<ShortcutActivator, Intent> get _shortcuts => {
-        const SingleActivator(LogicalKeyboardKey.keyO, control: true):
-            const _OpenFileIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyR, control: true):
-            const _ReloadIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyT, control: true):
-            const _ToggleTocIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true):
-            const _FocusSearchIntent(),
-        const SingleActivator(LogicalKeyboardKey.f5): const _ReloadIntent(),
+        for (final a in widget.keybindings[KeyAction.openFile])
+          a: const _OpenFileIntent(),
+        for (final a in widget.keybindings[KeyAction.reload])
+          a: const _ReloadIntent(),
+        for (final a in widget.keybindings[KeyAction.toggleToc])
+          a: const _ToggleTocIntent(),
+        for (final a in widget.keybindings[KeyAction.focusSearch])
+          a: const _FocusSearchIntent(),
+        for (final a in widget.keybindings[KeyAction.increaseFontSize])
+          a: const _IncreaseFontSizeIntent(),
+        for (final a in widget.keybindings[KeyAction.decreaseFontSize])
+          a: const _DecreaseFontSizeIntent(),
+        for (final a in widget.keybindings[KeyAction.resetFontSize])
+          a: const _ResetFontSizeIntent(),
       };
 
   Map<Type, Action<Intent>> get _actions => {
@@ -310,6 +355,15 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             _showSearchPanel();
             return null;
           },
+        ),
+        _IncreaseFontSizeIntent: CallbackAction<_IncreaseFontSizeIntent>(
+          onInvoke: (_) => _changeFontScale(_fontScaleStep),
+        ),
+        _DecreaseFontSizeIntent: CallbackAction<_DecreaseFontSizeIntent>(
+          onInvoke: (_) => _changeFontScale(-_fontScaleStep),
+        ),
+        _ResetFontSizeIntent: CallbackAction<_ResetFontSizeIntent>(
+          onInvoke: (_) => _setFontScale(1.0),
         ),
       };
 
@@ -362,7 +416,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         if (_filePath != null)
           IconButton(
             icon: Icon(_tocVisible ? Icons.list_alt : Icons.list),
-            tooltip: 'Toggle Table of Contents (Ctrl+T)',
+            tooltip:
+                'Toggle Table of Contents (${widget.keybindings.label(KeyAction.toggleToc)})',
             onPressed: () => setState(() => _tocVisible = !_tocVisible),
           ),
         if (_filePath != null) _buildMarginControl(context),
@@ -376,12 +431,14 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         if (_filePath != null)
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Reload (Ctrl+R / F5)',
+            tooltip:
+                'Reload (${widget.keybindings.labels(KeyAction.reload).join(' / ')})',
             onPressed: _reloadFile,
           ),
         IconButton(
           icon: const Icon(Icons.folder_open),
-          tooltip: 'Open file (Ctrl+O)',
+          tooltip:
+              'Open file (${widget.keybindings.label(KeyAction.openFile)})',
           onPressed: _pickAndOpenFile,
         ),
         IconButton(
@@ -479,7 +536,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
 
     return Row(
       children: [
-        if (_tocVisible && _tocEntries.isNotEmpty)
+        if (_tocVisible)
           TocPanel(
             entries: _tocEntries,
             scrollController: _scrollController,
@@ -503,6 +560,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             searchQuery: _searchQuery,
             activeMatchIndex: _activeMatchIndex,
             horizontalPadding: _horizontalMargin,
+            fontScale: _fontScale,
           ),
         ),
       ],
@@ -541,7 +599,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
           ),
           const SizedBox(height: 12),
           Text(
-            'or drop a .md / .mdc file anywhere\nKeyboard: Ctrl+O',
+            'or drop a .md / .mdc file anywhere\n'
+            'Keyboard: ${widget.keybindings.label(KeyAction.openFile)}',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall,
           ),
@@ -566,4 +625,16 @@ class _ToggleTocIntent extends Intent {
 
 class _FocusSearchIntent extends Intent {
   const _FocusSearchIntent();
+}
+
+class _IncreaseFontSizeIntent extends Intent {
+  const _IncreaseFontSizeIntent();
+}
+
+class _DecreaseFontSizeIntent extends Intent {
+  const _DecreaseFontSizeIntent();
+}
+
+class _ResetFontSizeIntent extends Intent {
+  const _ResetFontSizeIntent();
 }

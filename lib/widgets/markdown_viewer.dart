@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_highlight/flutter_highlight.dart';
+import 'package:flutter_highlight/themes/github.dart';
+import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:markdown/markdown.dart' as md;
 
@@ -31,7 +34,11 @@ void clearMermaidViewKeyCache() => _mermaidViewKeys.clear();
 /// [countHighlightMatches] so the visible highlights and the reported match
 /// count are guaranteed to agree.
 md.ExtensionSet buildMarkdownExtensionSet(String query) => md.ExtensionSet(
-      md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+      <md.BlockSyntax>[
+        const _MermaidFenceSyntax(),
+        const _CodeFenceSyntax(),
+        ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+      ],
       <md.InlineSyntax>[
         if (query.isNotEmpty) _SearchHighlightSyntax(query),
         md.EmojiSyntax(),
@@ -69,6 +76,180 @@ int countHighlightMatches(String content, String query) {
   return count;
 }
 
+MarkdownStyleSheet buildViewerMarkdownStyleSheet(
+  ThemeData theme, {
+  required bool isDark,
+  required bool useBundledFonts,
+  required double fontScale,
+}) {
+  final codeFont = useBundledFonts
+      ? TextStyle(fontFamily: 'FiraCode', fontSize: 13.5 * fontScale)
+      : TextStyle(fontFamily: 'monospace', fontSize: 13.5 * fontScale);
+  final bodyFont =
+      useBundledFonts ? const TextStyle(fontFamily: 'Inter') : const TextStyle();
+
+  final codeBg = isDark
+      ? theme.colorScheme.surfaceContainerHighest
+      : const Color(0xFFF6F8FA);
+  final blockquoteBorderColor = isDark
+      ? theme.colorScheme.primary.withOpacity(0.6)
+      : theme.colorScheme.primary;
+
+  return MarkdownStyleSheet.fromTheme(theme).copyWith(
+    p: bodyFont.copyWith(
+      fontSize: 16 * fontScale,
+      height: 1.7,
+      color: theme.colorScheme.onSurface,
+    ),
+    h1: bodyFont.copyWith(
+      fontSize: 32 * fontScale,
+      fontWeight: FontWeight.bold,
+      color: theme.colorScheme.onSurface,
+    ),
+    h2: bodyFont.copyWith(
+      fontSize: 26 * fontScale,
+      fontWeight: FontWeight.bold,
+      color: theme.colorScheme.onSurface,
+    ),
+    h3: bodyFont.copyWith(
+      fontSize: 22 * fontScale,
+      fontWeight: FontWeight.bold,
+      color: theme.colorScheme.onSurface,
+    ),
+    h4: bodyFont.copyWith(
+      fontSize: 18 * fontScale,
+      fontWeight: FontWeight.w600,
+      color: theme.colorScheme.onSurface,
+    ),
+    h5: bodyFont.copyWith(
+      fontSize: 16 * fontScale,
+      fontWeight: FontWeight.w600,
+      color: theme.colorScheme.onSurface,
+    ),
+    h6: bodyFont.copyWith(
+      fontSize: 14 * fontScale,
+      fontWeight: FontWeight.w600,
+      color: theme.colorScheme.onSurfaceVariant,
+    ),
+    code: codeFont.copyWith(
+      backgroundColor: codeBg,
+      color: isDark ? theme.colorScheme.primary : const Color(0xFFD63200),
+    ),
+    codeblockDecoration: BoxDecoration(
+      color: codeBg,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
+    ),
+    codeblockPadding: const EdgeInsets.all(16),
+    blockquoteDecoration: BoxDecoration(
+      border: Border(
+        left: BorderSide(color: blockquoteBorderColor, width: 4),
+      ),
+      color: blockquoteBorderColor.withOpacity(0.08),
+    ),
+    blockquotePadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+    horizontalRuleDecoration: BoxDecoration(
+      border: Border(
+        top: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
+      ),
+    ),
+    tableHead: bodyFont.copyWith(fontWeight: FontWeight.bold),
+    tableBody: bodyFont,
+    tableBorder: TableBorder.all(
+      color: theme.colorScheme.outlineVariant,
+      width: 1,
+    ),
+    tableHeadAlign: TextAlign.left,
+    a: bodyFont.copyWith(
+      color: theme.colorScheme.primary,
+      decoration: TextDecoration.underline,
+      decorationColor: theme.colorScheme.primary.withOpacity(0.5),
+    ),
+    listBullet: bodyFont.copyWith(
+      fontSize: 16 * fontScale,
+      color: theme.colorScheme.primary,
+    ),
+  );
+}
+
+/// Renders fenced code blocks with syntax highlighting via flutter_highlight.
+class _CodeBlockBuilder extends MarkdownElementBuilder {
+  _CodeBlockBuilder({
+    required this.isDark,
+    required this.codeBackground,
+    required this.codeForeground,
+  });
+
+  final bool isDark;
+  final Color codeBackground;
+  final Color codeForeground;
+
+  @override
+  bool isBlockElement() => true;
+
+  @override
+  Widget visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final code = (element.attributes['content'] ?? '').trimRight();
+    if (code.isEmpty) return const SizedBox.shrink();
+
+    final language = _normalizeCodeLanguage(element.attributes['language']);
+    final textStyle = (preferredStyle ?? parentStyle ?? const TextStyle())
+        .copyWith(
+          color: codeForeground,
+          fontFamily:
+              (preferredStyle ?? parentStyle)?.fontFamily ?? 'FiraCode',
+        );
+    final theme = Map<String, TextStyle>.from(
+      isDark ? monokaiSublimeTheme : githubTheme,
+    );
+    final rootStyle = (theme['root'] ?? const TextStyle()).copyWith(
+      backgroundColor: Colors.transparent,
+      color: codeForeground,
+    );
+    theme['root'] = rootStyle;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: codeBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 1,
+        ),
+      ),
+      child: HighlightView(
+        code,
+        language: language,
+        theme: theme,
+        padding: const EdgeInsets.all(16),
+        textStyle: textStyle,
+      ),
+    );
+  }
+}
+
+String _normalizeCodeLanguage(String? info) {
+  final trimmed = info?.trim() ?? '';
+  if (trimmed.isEmpty) return 'plaintext';
+  final raw = trimmed.split(RegExp(r'\s+')).first.toLowerCase();
+  return switch (raw) {
+    'sh' || 'shell' || 'zsh' => 'bash',
+    'js' => 'javascript',
+    'ts' => 'typescript',
+    'yml' => 'yaml',
+    'text' || 'plain' || 'plaintext' => 'plaintext',
+    _ => raw,
+  };
+}
+
 /// A scrollable Markdown viewer with syntax-highlighted code blocks,
 /// clickable links, ```mermaid``` diagram rendering, and image support
 /// relative to [basePath].
@@ -86,6 +267,7 @@ class MarkdownViewer extends StatelessWidget {
     this.activeMatchIndex = 0,
     this.useBundledFonts = true,
     this.horizontalPadding = 32,
+    this.fontScale = 1.0,
   });
 
   final String content;
@@ -95,6 +277,7 @@ class MarkdownViewer extends StatelessWidget {
   final int activeMatchIndex;
   final bool useBundledFonts;
   final double horizontalPadding;
+  final double fontScale;
 
   @override
   Widget build(BuildContext context) {
@@ -133,9 +316,12 @@ class MarkdownViewer extends StatelessWidget {
           imageDirectory: basePath,
           extensionSet: buildMarkdownExtensionSet(query),
           builders: <String, MarkdownElementBuilder>{
-            // Always registered: renders ```mermaid``` blocks as diagrams and
-            // defers other code blocks to the default renderer.
-            'pre': _CodeBlockBuilder(
+            'codeblock': _CodeBlockBuilder(
+              isDark: isDark,
+              codeBackground: codeBackground,
+              codeForeground: theme.colorScheme.onSurface,
+            ),
+            'mermaid': _MermaidBlockBuilder(
               isDark: isDark,
               codeBackground: codeBackground,
               codeForeground: theme.colorScheme.onSurface,
@@ -163,94 +349,11 @@ class MarkdownViewer extends StatelessWidget {
   }
 
   MarkdownStyleSheet _buildStyleSheet(BuildContext context, bool isDark) {
-    final theme = Theme.of(context);
-    final codeFont = useBundledFonts
-        ? const TextStyle(fontFamily: 'FiraCode', fontSize: 13.5)
-        : const TextStyle(fontFamily: 'monospace', fontSize: 13.5);
-    final bodyFont =
-        useBundledFonts ? const TextStyle(fontFamily: 'Inter') : const TextStyle();
-
-    final codeBg = isDark
-        ? theme.colorScheme.surfaceContainerHighest
-        : const Color(0xFFF6F8FA);
-    final blockquoteBorderColor = isDark
-        ? theme.colorScheme.primary.withOpacity(0.6)
-        : theme.colorScheme.primary;
-
-    return MarkdownStyleSheet.fromTheme(theme).copyWith(
-      p: bodyFont.copyWith(
-        fontSize: 16,
-        height: 1.7,
-        color: theme.colorScheme.onSurface,
-      ),
-      h1: bodyFont.copyWith(
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
-        color: theme.colorScheme.onSurface,
-      ),
-      h2: bodyFont.copyWith(
-        fontSize: 26,
-        fontWeight: FontWeight.bold,
-        color: theme.colorScheme.onSurface,
-      ),
-      h3: bodyFont.copyWith(
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
-        color: theme.colorScheme.onSurface,
-      ),
-      h4: bodyFont.copyWith(
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        color: theme.colorScheme.onSurface,
-      ),
-      h5: bodyFont.copyWith(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: theme.colorScheme.onSurface,
-      ),
-      h6: bodyFont.copyWith(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: theme.colorScheme.onSurfaceVariant,
-      ),
-      code: codeFont.copyWith(
-        backgroundColor: codeBg,
-        color: isDark ? theme.colorScheme.primary : const Color(0xFFD63200),
-      ),
-      codeblockDecoration: BoxDecoration(
-        color: codeBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
-      ),
-      codeblockPadding: const EdgeInsets.all(16),
-      blockquoteDecoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(color: blockquoteBorderColor, width: 4),
-        ),
-        color: blockquoteBorderColor.withOpacity(0.08),
-      ),
-      blockquotePadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      horizontalRuleDecoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
-        ),
-      ),
-      tableHead: bodyFont.copyWith(fontWeight: FontWeight.bold),
-      tableBody: bodyFont,
-      tableBorder: TableBorder.all(
-        color: theme.colorScheme.outlineVariant,
-        width: 1,
-      ),
-      tableHeadAlign: TextAlign.left,
-      a: bodyFont.copyWith(
-        color: theme.colorScheme.primary,
-        decoration: TextDecoration.underline,
-        decorationColor: theme.colorScheme.primary.withOpacity(0.5),
-      ),
-      listBullet: bodyFont.copyWith(
-        fontSize: 16,
-        color: theme.colorScheme.primary,
-      ),
+    return buildViewerMarkdownStyleSheet(
+      Theme.of(context),
+      isDark: isDark,
+      useBundledFonts: useBundledFonts,
+      fontScale: fontScale,
     );
   }
 }
@@ -323,6 +426,95 @@ class _SearchHighlightSyntax extends md.InlineSyntax {
   }
 }
 
+class _MermaidFenceSyntax extends md.BlockSyntax {
+  const _MermaidFenceSyntax();
+
+  @override
+  RegExp get pattern => const md.FencedCodeBlockSyntax().pattern;
+
+  @override
+  bool canParse(md.BlockParser parser) {
+    final match = pattern.firstMatch(parser.current.content);
+    if (match == null) return false;
+    final info = (match.namedGroup('backtickInfo') ??
+            match.namedGroup('tildeInfo') ??
+            '')
+        .trim();
+    final language = info.split(' ').first;
+    return language == 'mermaid';
+  }
+
+  @override
+  md.Node? parse(md.BlockParser parser) {
+    final match = pattern.firstMatch(parser.current.content);
+    if (match == null) return null;
+
+    final marker = match.namedGroup('backtick') ?? match.namedGroup('tilde');
+    if (marker == null) return null;
+
+    final indent = match[1]!.length;
+    final childLines = const md.FencedCodeBlockSyntax().parseChildLines(
+      parser,
+      marker,
+      indent,
+    );
+
+    var text = childLines.map((line) => line!.content).join('\n');
+    if (text.isNotEmpty) {
+      text = '$text\n';
+    }
+    final element = md.Element.empty('mermaid');
+    element.attributes['content'] = text;
+    return element;
+  }
+}
+
+class _CodeFenceSyntax extends md.BlockSyntax {
+  const _CodeFenceSyntax();
+
+  @override
+  RegExp get pattern => const md.FencedCodeBlockSyntax().pattern;
+
+  @override
+  bool canParse(md.BlockParser parser) {
+    final match = pattern.firstMatch(parser.current.content);
+    if (match == null) return false;
+    final info = (match.namedGroup('backtickInfo') ??
+            match.namedGroup('tildeInfo') ??
+            '')
+        .trim();
+    final language = info.split(RegExp(r'\s+')).first.toLowerCase();
+    return language != 'mermaid';
+  }
+
+  @override
+  md.Node? parse(md.BlockParser parser) {
+    final openingFence = pattern.firstMatch(parser.current.content);
+    if (openingFence == null) return null;
+
+    final marker = openingFence.namedGroup('backtick') ??
+        openingFence.namedGroup('tilde');
+    if (marker == null) return null;
+
+    final indent = openingFence[1]!.length;
+    final childLines = const md.FencedCodeBlockSyntax().parseChildLines(
+      parser,
+      marker,
+      indent,
+    );
+
+    var text = childLines.map((e) => e!.content).join('\n');
+    final element = md.Element.empty('codeblock');
+    element.attributes['content'] = text;
+    final info = (openingFence.namedGroup('backtickInfo') ??
+            openingFence.namedGroup('tildeInfo') ??
+            '')
+        .trim();
+    element.attributes['language'] = _normalizeCodeLanguage(info);
+    return element;
+  }
+}
+
 /// Renders a highlighted search match. The occurrence at [activeMatchIndex]
 /// gets [activeBackgroundColor] and is scrolled into view; the rest use
 /// [backgroundColor].
@@ -384,10 +576,9 @@ class _SearchHighlightBuilder extends MarkdownElementBuilder {
   final GlobalKey _activeMatchKey = GlobalKey();
 }
 
-/// Renders ```mermaid``` fenced code blocks as diagrams via [MermaidView] and
-/// defers all other code blocks to the default renderer.
-class _CodeBlockBuilder extends MarkdownElementBuilder {
-  _CodeBlockBuilder({
+/// Renders Mermaid fenced code blocks as diagrams via [MermaidView].
+class _MermaidBlockBuilder extends MarkdownElementBuilder {
+  _MermaidBlockBuilder({
     required this.isDark,
     required this.codeBackground,
     required this.codeForeground,
@@ -400,45 +591,24 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
   @override
   bool isBlockElement() => true;
 
-  /// Returns the diagram source when [pre] wraps a ```mermaid``` fenced block.
-  String? _mermaidSource(md.Element pre) {
-    final children = pre.children;
-    if (children == null) return null;
-    for (final node in children) {
-      if (node is md.Element && node.tag == 'code') {
-        final classes = (node.attributes['class'] ?? '').split(' ');
-        if (classes.contains('language-mermaid')) {
-          final text = node.textContent;
-          final trimmed = text.endsWith('\n')
-              ? text.substring(0, text.length - 1)
-              : text;
-          return decodeHtmlEntities(trimmed);
-        }
-        return null;
-      }
-    }
-    return null;
-  }
-
   @override
-  Widget? visitElementAfterWithContext(
+  Widget visitElementAfterWithContext(
     BuildContext context,
     md.Element element,
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
-    final mermaid = _mermaidSource(element);
-    if (mermaid != null && mermaid.trim().isNotEmpty) {
+    final code = decodeHtmlEntities(element.attributes['content'] ?? '')
+        .trimRight();
+    if (code.isNotEmpty) {
       return MermaidView(
-        key: _mermaidViewKey(mermaid, isDark),
-        code: mermaid,
+        key: _mermaidViewKey(code, isDark),
+        code: code,
         isDark: isDark,
         backgroundColor: codeBackground,
         foregroundColor: codeForeground,
       );
     }
-
-    // Not a mermaid block: defer to flutter_markdown's default code rendering.
-    return null;
+    return const SizedBox.shrink();
   }
 }

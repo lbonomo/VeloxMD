@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:veloxmd/widgets/markdown_viewer.dart';
 
 void main() {
@@ -271,6 +272,104 @@ void main() {
             widget is Text &&
             widget.data == 'Problema' &&
             widget.style?.backgroundColor != null,
+      ),
+      findsWidgets,
+    );
+  });
+
+  test('buildViewerMarkdownStyleSheet scales font sizes', () {
+    final theme = ThemeData.light().copyWith(
+      textTheme: const TextTheme(bodyMedium: TextStyle(fontSize: 14)),
+    );
+
+    final normal = buildViewerMarkdownStyleSheet(
+      theme,
+      isDark: false,
+      useBundledFonts: true,
+      fontScale: 1.0,
+    );
+    final zoomed = buildViewerMarkdownStyleSheet(
+      theme,
+      isDark: false,
+      useBundledFonts: true,
+      fontScale: 1.5,
+    );
+
+    expect(normal.p?.fontSize, 16);
+    expect(zoomed.p?.fontSize, 24);
+    expect(normal.h1?.fontSize, 32);
+    expect(zoomed.h1?.fontSize, 48);
+  });
+
+  testWidgets('renders plain fenced code blocks', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownViewer(
+            content: '''
+```dart
+void main() {}
+```
+''',
+            scrollController: controller,
+            basePath: '.',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.byType(HighlightView), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is RichText &&
+            widget.text.toPlainText().contains('void main() {}'),
+      ),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('uses syntax highlighting for multiple code languages', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownViewer(
+            content: '''
+```dart
+void main() {}
+```
+
+```sql
+SELECT 1;
+```
+''',
+            scrollController: controller,
+            basePath: '.',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.byType(HighlightView), findsNWidgets(2));
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is RichText &&
+            widget.text.toPlainText().contains('void main() {}'),
       ),
       findsWidgets,
     );

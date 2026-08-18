@@ -33,16 +33,30 @@ class TocPanel extends StatelessWidget {
               ),
             ),
             const Divider(height: 1),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: entries.length,
-                itemBuilder: (context, i) => _TocItem(
-                  entry: entries[i],
-                  onTap: () => _scrollToEntry(entries[i]),
+            if (entries.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'No headings found in this document.',
+                      style: theme.textTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: entries.length,
+                  itemBuilder: (context, i) => _TocItem(
+                    entry: entries[i],
+                    onTap: () => _scrollToEntry(entries[i]),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
