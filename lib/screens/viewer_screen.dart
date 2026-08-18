@@ -42,7 +42,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   bool _tocVisible = false;
   List<TocEntry> _tocEntries = [];
   DocumentStats _stats = DocumentStats.fromMarkdown('');
-  final String _version = '1.0.1';
+  final String _version = VeloxAboutDialog.version;
   double _horizontalMargin = 32;
   static const double _minMargin = 0;
   static const double _maxMargin = 320;
