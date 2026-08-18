@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.2 - 2026-08-17
 
 ### ✨ Features
 - **Mermaid diagram rendering**: ` ```mermaid ` fenced code blocks are now rendered

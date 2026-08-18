@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show SingleActivator;
 import 'package:path/path.dart' as p;
 
 /// Logical actions the app can trigger via a keyboard shortcut.
