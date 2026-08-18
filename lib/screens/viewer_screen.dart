@@ -132,23 +132,34 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     // clicked repeatedly or the Ctrl+O shortcut fires while one is already open.
     if (_isPickerOpen) return;
     _isPickerOpen = true;
-    // The native file chooser can open behind the app window (e.g. when the
-    // window is pinned "always on top"). Drop that flag while the dialog is
-    // open so the chooser is never covered, and restore it afterwards.
+    // On Linux, some native choosers can still appear behind an always-on-top
+    // app window. Temporarily dropping always-on-top and minimizing the app
+    // guarantees the chooser is visible, then we restore the window state.
     final bool wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
+    var minimizedForPicker = false;
     if (wasAlwaysOnTop) {
       await windowManager.setAlwaysOnTop(false);
+      if (Platform.isLinux) {
+        await windowManager.minimize();
+        minimizedForPicker = true;
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+      }
     }
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
         dialogTitle: 'Open Markdown file',
+        lockParentWindow: true,
       );
       if (result != null && result.files.single.path != null) {
         await _openFile(result.files.single.path!);
       }
     } finally {
+      if (minimizedForPicker) {
+        await windowManager.restore();
+        await windowManager.focus();
+      }
       if (wasAlwaysOnTop) {
         await windowManager.setAlwaysOnTop(true);
       }
