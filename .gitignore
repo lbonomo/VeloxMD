@@ -35,4 +35,4 @@ coverage/
 test/failures/
 
 # Dist
-dist/*.deb
+dist/*
