@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### ✨ Features
+- **Dedicated search panel**: moved document search out of the AppBar into a
+  side panel with query input, match count, next/previous navigation, and clear
+  action. The search remains debounced and still highlights matches in the
+  rendered document.
 - **Mermaid diagram rendering**: ` ```mermaid ` fenced code blocks are now rendered
   as diagrams (flowchart, sequence, class, state, gantt, pie, etc.).
   - Rendered fully **offline** via a bundled Mermaid runtime inside an embedded
