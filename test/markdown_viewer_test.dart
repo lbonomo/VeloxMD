@@ -380,4 +380,33 @@ SELECT 1;
       findsWidgets,
     );
   });
+
+  testWidgets('fenced code blocks scale font size with fontScale', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownViewer(
+            content: '''
+```dart
+void main() {}
+```
+''',
+            scrollController: controller,
+            basePath: '.',
+            fontScale: 2.0,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    final highlightView = tester.widget<HighlightView>(find.byType(HighlightView));
+    expect(highlightView.textStyle?.fontSize, 27.0);
+  });
 }

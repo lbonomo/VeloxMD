@@ -181,11 +181,13 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     required this.isDark,
     required this.codeBackground,
     required this.codeForeground,
+    required this.fontScale,
   });
 
   final bool isDark;
   final Color codeBackground;
   final Color codeForeground;
+  final double fontScale;
 
   @override
   bool isBlockElement() => true;
@@ -201,8 +203,9 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     if (code.isEmpty) return const SizedBox.shrink();
 
     final language = _normalizeCodeLanguage(element.attributes['language']);
-    final effectiveFontSize =
+    final baseFontSize =
         preferredStyle?.fontSize ?? parentStyle?.fontSize ?? 13.5;
+    final effectiveFontSize = baseFontSize * fontScale;
     final effectiveFontFamily =
         (preferredStyle ?? parentStyle)?.fontFamily ?? 'FiraCode';
     final textStyle = (preferredStyle ?? parentStyle ?? const TextStyle())
@@ -335,6 +338,7 @@ class MarkdownViewer extends StatelessWidget {
               isDark: isDark,
               codeBackground: codeBackground,
               codeForeground: theme.colorScheme.onSurface,
+              fontScale: fontScale,
             ),
             'mermaid': _MermaidBlockBuilder(
               isDark: isDark,
