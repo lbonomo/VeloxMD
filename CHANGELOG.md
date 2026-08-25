@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.3 - 2026-08-24
+
+### ⚡ Performance & Optimization
+- **High-performance text parsing**: eliminated redundant memory allocations in `DocumentStats` and `TocEntry`.
+- **Off-thread processing**: stats and Table of Contents calculation offloaded to isolates (`Isolate.run`) for large documents.
+- **Instant search navigation**: prevented Markdown document AST re-parsing when navigating search matches.
+- **Optimized CEF height polling**: reduced Chromium WebView polling overhead for Mermaid diagrams.
+
+### 🐛 Bug Fixes
+- **Code block zoom scaling**: fixed fenced code blocks (` ``` `) to scale dynamically with font size zoom shortcuts (`Ctrl++`, `Ctrl+-`, `Ctrl+0`).
+
 ## 1.0.2 - 2026-08-17
 
 ### ✨ Features
