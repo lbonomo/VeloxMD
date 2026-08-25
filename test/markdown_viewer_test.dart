@@ -299,6 +299,12 @@ void main() {
     expect(zoomed.p?.fontSize, 24);
     expect(normal.h1?.fontSize, 32);
     expect(zoomed.h1?.fontSize, 48);
+    expect(normal.code?.fontSize, 13.5);
+    expect(zoomed.code?.fontSize, 20.25);
+    expect(normal.tableBody?.fontSize, 16);
+    expect(zoomed.tableBody?.fontSize, 24);
+    expect(normal.tableHead?.fontSize, 16);
+    expect(zoomed.tableHead?.fontSize, 24);
   });
 
   testWidgets('renders plain fenced code blocks', (
@@ -373,5 +379,34 @@ SELECT 1;
       ),
       findsWidgets,
     );
+  });
+
+  testWidgets('fenced code blocks scale font size with fontScale', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownViewer(
+            content: '''
+```dart
+void main() {}
+```
+''',
+            scrollController: controller,
+            basePath: '.',
+            fontScale: 2.0,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    final highlightView = tester.widget<HighlightView>(find.byType(HighlightView));
+    expect(highlightView.textStyle?.fontSize, 27.0);
   });
 }

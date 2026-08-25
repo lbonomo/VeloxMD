@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -11,7 +12,6 @@ import '../widgets/markdown_viewer.dart';
 import '../widgets/search_panel.dart';
 import '../widgets/toc_panel.dart';
 import '../widgets/document_footer.dart';
-import '../widgets/toc_panel.dart';
 import '../dialogs/about_dialog.dart';
 import '../models/toc_entry.dart';
 import '../models/document_stats.dart';
@@ -135,37 +135,48 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     // clicked repeatedly or the Ctrl+O shortcut fires while one is already open.
     if (_isPickerOpen) return;
     _isPickerOpen = true;
-    // On Linux, some native choosers can still appear behind an always-on-top
-    // app window. Temporarily dropping always-on-top and minimizing the app
-    // guarantees the chooser is visible, then we restore the window state.
-    final bool wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
-    var minimizedForPicker = false;
-    if (wasAlwaysOnTop) {
-      await windowManager.setAlwaysOnTop(false);
-      if (Platform.isLinux) {
-        await windowManager.minimize();
-        minimizedForPicker = true;
-        await Future<void>.delayed(const Duration(milliseconds: 120));
-      }
-    }
+
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
-        dialogTitle: 'Open Markdown file',
-        lockParentWindow: true,
-      );
-      if (result != null && result.files.single.path != null) {
-        await _openFile(result.files.single.path!);
+      String? selectedPath;
+      var usedNativeChannel = false;
+
+      if (Platform.isLinux) {
+        try {
+          const channel = MethodChannel('com.veloxmd/file_picker');
+          selectedPath = await channel.invokeMethod<String>('pickFile');
+          usedNativeChannel = true;
+        } on MissingPluginException {
+          usedNativeChannel = false;
+        } catch (_) {
+          usedNativeChannel = false;
+        }
+      }
+
+      if (!usedNativeChannel) {
+        final bool wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
+        if (wasAlwaysOnTop) {
+          await windowManager.setAlwaysOnTop(false);
+        }
+        try {
+          final result = await FilePicker.platform.pickFiles(
+            type: FileType.custom,
+            allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
+            dialogTitle: 'Open Markdown file',
+            lockParentWindow: true,
+          );
+          selectedPath = result?.files.single.path;
+        } finally {
+          if (wasAlwaysOnTop) {
+            await windowManager.setAlwaysOnTop(true);
+          }
+          await windowManager.focus();
+        }
+      }
+
+      if (selectedPath != null) {
+        await _openFile(selectedPath);
       }
     } finally {
-      if (minimizedForPicker) {
-        await windowManager.restore();
-        await windowManager.focus();
-      }
-      if (wasAlwaysOnTop) {
-        await windowManager.setAlwaysOnTop(true);
-      }
       _isPickerOpen = false;
     }
   }
@@ -184,20 +195,35 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     try {
       final content = await FileService.readMarkdown(path);
       _watchFile(path);
+
+      final statsFuture = content.length > 20000
+          ? Isolate.run(() => DocumentStats.fromMarkdown(content))
+          : Future.value(DocumentStats.fromMarkdown(content));
+      final tocFuture = content.length > 20000
+          ? Isolate.run(() => TocEntry.fromMarkdown(content))
+          : Future.value(TocEntry.fromMarkdown(content));
+
+      final stats = await statsFuture;
+      final tocEntries = await tocFuture;
+
+      if (!mounted) return;
+
       setState(() {
         _filePath = path;
         _markdownContent = content;
-        _stats = DocumentStats.fromMarkdown(content);
+        _stats = stats;
         _isLoading = false;
-        _tocEntries = TocEntry.fromMarkdown(content);
+        _tocEntries = tocEntries;
         _recomputeMatchCount();
       });
       await windowManager.setTitle(p.basename(path));
     } on FileServiceException catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.message;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.message;
+        });
+      }
     }
   }
 
@@ -212,10 +238,22 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     if (_filePath == null) return;
     try {
       final content = await FileService.readMarkdown(_filePath!);
+      final statsFuture = content.length > 20000
+          ? Isolate.run(() => DocumentStats.fromMarkdown(content))
+          : Future.value(DocumentStats.fromMarkdown(content));
+      final tocFuture = content.length > 20000
+          ? Isolate.run(() => TocEntry.fromMarkdown(content))
+          : Future.value(TocEntry.fromMarkdown(content));
+
+      final stats = await statsFuture;
+      final tocEntries = await tocFuture;
+
+      if (!mounted) return;
+
       setState(() {
         _markdownContent = content;
-        _stats = DocumentStats.fromMarkdown(content);
-        _tocEntries = TocEntry.fromMarkdown(content);
+        _stats = stats;
+        _tocEntries = tocEntries;
         _recomputeMatchCount();
       });
     } catch (_) {

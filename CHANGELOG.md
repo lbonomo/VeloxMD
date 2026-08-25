@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.0.4 - 2026-08-25
+
+### 🐛 Bug Fixes
+- **File Chooser Stacking & Modal Focus (#21)**:
+  - Fixed issue where opening files (including documents with Mermaid diagrams) minimized the application window or pushed it behind other open applications.
+  - Implemented GTK native modal file chooser (`GtkFileChooserNative`) linked directly to the main GTK window on Linux via MethodChannel.
+  - The native file selection dialog now stays strictly on top of VeloxMD while keeping the main window in place without minimizing or lowering its stacking order.
+
+## 1.0.3 - 2026-08-24
+
+### ⚡ Performance & Optimization
+- **High-performance text parsing**: eliminated redundant memory allocations in `DocumentStats` and `TocEntry`.
+- **Off-thread processing**: stats and Table of Contents calculation offloaded to isolates (`Isolate.run`) for large documents.
+- **Instant search navigation**: prevented Markdown document AST re-parsing when navigating search matches.
+- **Optimized CEF height polling**: reduced Chromium WebView polling overhead for Mermaid diagrams.
+
+### 🐛 Bug Fixes
+- **Code block zoom scaling**: fixed fenced code blocks (` ``` `) to scale dynamically with font size zoom shortcuts (`Ctrl++`, `Ctrl+-`, `Ctrl+0`).
+
 ## 1.0.2 - 2026-08-17
 
 ### ✨ Features
