@@ -135,37 +135,48 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     // clicked repeatedly or the Ctrl+O shortcut fires while one is already open.
     if (_isPickerOpen) return;
     _isPickerOpen = true;
-    // On Linux, some native choosers can still appear behind an always-on-top
-    // app window. Temporarily dropping always-on-top and minimizing the app
-    // guarantees the chooser is visible, then we restore the window state.
-    final bool wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
-    var minimizedForPicker = false;
-    if (wasAlwaysOnTop) {
-      await windowManager.setAlwaysOnTop(false);
-      if (Platform.isLinux) {
-        await windowManager.minimize();
-        minimizedForPicker = true;
-        await Future<void>.delayed(const Duration(milliseconds: 120));
-      }
-    }
+
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
-        dialogTitle: 'Open Markdown file',
-        lockParentWindow: true,
-      );
-      if (result != null && result.files.single.path != null) {
-        await _openFile(result.files.single.path!);
+      String? selectedPath;
+      var usedNativeChannel = false;
+
+      if (Platform.isLinux) {
+        try {
+          const channel = MethodChannel('com.veloxmd/file_picker');
+          selectedPath = await channel.invokeMethod<String>('pickFile');
+          usedNativeChannel = true;
+        } on MissingPluginException {
+          usedNativeChannel = false;
+        } catch (_) {
+          usedNativeChannel = false;
+        }
+      }
+
+      if (!usedNativeChannel) {
+        final bool wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
+        if (wasAlwaysOnTop) {
+          await windowManager.setAlwaysOnTop(false);
+        }
+        try {
+          final result = await FilePicker.platform.pickFiles(
+            type: FileType.custom,
+            allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
+            dialogTitle: 'Open Markdown file',
+            lockParentWindow: true,
+          );
+          selectedPath = result?.files.single.path;
+        } finally {
+          if (wasAlwaysOnTop) {
+            await windowManager.setAlwaysOnTop(true);
+          }
+          await windowManager.focus();
+        }
+      }
+
+      if (selectedPath != null) {
+        await _openFile(selectedPath);
       }
     } finally {
-      if (minimizedForPicker) {
-        await windowManager.restore();
-        await windowManager.focus();
-      }
-      if (wasAlwaysOnTop) {
-        await windowManager.setAlwaysOnTop(true);
-      }
       _isPickerOpen = false;
     }
   }

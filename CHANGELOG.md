@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.4 - 2026-08-25
+
+### 🐛 Bug Fixes
+- **File Chooser Stacking & Modal Focus (#21)**:
+  - Fixed issue where opening files (including documents with Mermaid diagrams) minimized the application window or pushed it behind other open applications.
+  - Implemented GTK native modal file chooser (`GtkFileChooserNative`) linked directly to the main GTK window on Linux via MethodChannel.
+  - The native file selection dialog now stays strictly on top of VeloxMD while keeping the main window in place without minimizing or lowering its stacking order.
+
 ## 1.0.3 - 2026-08-24
 
 ### ⚡ Performance & Optimization

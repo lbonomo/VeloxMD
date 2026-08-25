@@ -15,6 +15,49 @@ struct _MyApplication {
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
+static void native_file_picker_method_call_cb(FlMethodChannel* channel,
+                                              FlMethodCall* method_call,
+                                              gpointer user_data) {
+  GtkWindow* window = GTK_WINDOW(user_data);
+  const gchar* method = fl_method_call_get_name(method_call);
+
+  if (g_strcmp0(method, "pickFile") == 0) {
+    GtkFileChooserNative* native_chooser = gtk_file_chooser_native_new(
+        "Open Markdown file",
+        window,
+        GTK_FILE_CHOOSER_ACTION_OPEN,
+        "_Open",
+        "_Cancel");
+
+    GtkFileFilter* filter = gtk_file_filter_new();
+    gtk_file_filter_set_name(filter, "Markdown files (*.md, *.markdown, *.mdc, *.txt)");
+    gtk_file_filter_add_pattern(filter, "*.md");
+    gtk_file_filter_add_pattern(filter, "*.markdown");
+    gtk_file_filter_add_pattern(filter, "*.mdc");
+    gtk_file_filter_add_pattern(filter, "*.txt");
+    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(native_chooser), filter);
+
+    gint res = gtk_native_dialog_run(GTK_NATIVE_DIALOG(native_chooser));
+    if (res == GTK_RESPONSE_ACCEPT) {
+      char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(native_chooser));
+      g_autoptr(FlValue) result = fl_value_new_string(filename);
+      g_free(filename);
+      fl_method_call_respond(method_call,
+                             FL_METHOD_RESPONSE(fl_method_success_response_new(result)),
+                             nullptr);
+    } else {
+      fl_method_call_respond(method_call,
+                             FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr)),
+                             nullptr);
+    }
+    g_object_unref(native_chooser);
+  } else {
+    fl_method_call_respond(method_call,
+                           FL_METHOD_RESPONSE(fl_method_not_implemented_response_new()),
+                           nullptr);
+  }
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
@@ -43,6 +86,14 @@ static void my_application_activate(GApplication* application) {
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
+
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  g_autoptr(FlMethodChannel) channel = fl_method_channel_new(
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+      "com.veloxmd/file_picker",
+      FL_METHOD_CODEC(codec));
+  fl_method_channel_set_method_call_handler(
+      channel, native_file_picker_method_call_cb, g_object_ref(window), g_object_unref);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
