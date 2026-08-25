@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.5 - 2026-08-25
+
+### 🐛 Bug Fixes
+- **Selectable Code Blocks**:
+  - Fixed an issue where text within fenced code blocks (``` ```) could not be selected with the mouse to copy/paste. Replaced `HighlightView` with a custom `SelectableHighlightView` widget using `Text.rich`.
+
 ## 1.0.4 - 2026-08-25
 
 ### 🐛 Bug Fixes

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:highlight/highlight.dart' show highlight, Node;
 
 import 'mermaid_view.dart';
 
@@ -175,7 +175,90 @@ MarkdownStyleSheet buildViewerMarkdownStyleSheet(
   );
 }
 
-/// Renders fenced code blocks with syntax highlighting via flutter_highlight.
+/// A custom syntax-highlighted code block widget that uses [Text.rich]
+/// to register itself with the ambient [SelectionArea] and support text selection.
+class SelectableHighlightView extends StatelessWidget {
+  SelectableHighlightView(
+    String input, {
+    super.key,
+    this.language,
+    this.theme = const {},
+    this.padding,
+    this.textStyle,
+    int tabSize = 8,
+  }) : source = input.replaceAll('\t', ' ' * tabSize);
+
+  final String source;
+  final String? language;
+  final Map<String, TextStyle> theme;
+  final EdgeInsetsGeometry? padding;
+  final TextStyle? textStyle;
+
+  List<TextSpan> _convert(List<Node> nodes) {
+    final spans = <TextSpan>[];
+    var currentSpans = spans;
+    final stack = <List<TextSpan>>[];
+
+    void traverse(Node node) {
+      if (node.value != null) {
+        currentSpans.add(node.className == null
+            ? TextSpan(text: node.value)
+            : TextSpan(text: node.value, style: theme[node.className!]));
+      } else if (node.children != null) {
+        final tmp = <TextSpan>[];
+        currentSpans.add(TextSpan(children: tmp, style: theme[node.className!]));
+        stack.add(currentSpans);
+        currentSpans = tmp;
+
+        for (final n in node.children!) {
+          traverse(n);
+          if (n == node.children!.last) {
+            currentSpans = stack.isEmpty ? spans : stack.removeLast();
+          }
+        }
+      }
+    }
+
+    for (final node in nodes) {
+      traverse(node);
+    }
+
+    return spans;
+  }
+
+  static const _rootKey = 'root';
+  static const _defaultFontColor = Color(0xff000000);
+  static const _defaultBackgroundColor = Color(0xffffffff);
+  static const _defaultFontFamily = 'monospace';
+
+  @override
+  Widget build(BuildContext context) {
+    var effectiveTextStyle = TextStyle(
+      fontFamily: _defaultFontFamily,
+      color: theme[_rootKey]?.color ?? _defaultFontColor,
+    );
+    if (textStyle != null) {
+      effectiveTextStyle = effectiveTextStyle.merge(textStyle);
+    }
+
+    return Container(
+      color: theme[_rootKey]?.backgroundColor ?? _defaultBackgroundColor,
+      padding: padding,
+      width: double.infinity,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Text.rich(
+          TextSpan(
+            style: effectiveTextStyle,
+            children: _convert(highlight.parse(source, language: language).nodes ?? []),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Renders fenced code blocks with syntax highlighting via SelectableHighlightView.
 class _CodeBlockBuilder extends MarkdownElementBuilder {
   _CodeBlockBuilder({
     required this.isDark,
@@ -243,12 +326,14 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
           width: 1,
         ),
       ),
-      child: HighlightView(
-        code,
-        language: language,
-        theme: theme,
-        padding: const EdgeInsets.all(16),
-        textStyle: textStyle,
+      child: SelectionArea(
+        child: SelectableHighlightView(
+          code,
+          language: language,
+          theme: theme,
+          padding: const EdgeInsets.all(16),
+          textStyle: textStyle,
+        ),
       ),
     );
   }

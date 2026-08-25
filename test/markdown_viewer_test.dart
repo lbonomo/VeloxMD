@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:veloxmd/widgets/markdown_viewer.dart';
 
 void main() {
@@ -331,7 +330,14 @@ void main() {}
 
     await tester.pump();
 
-    expect(find.byType(HighlightView), findsOneWidget);
+    expect(find.byType(SelectableHighlightView), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(SelectionArea),
+        matching: find.byType(SelectableHighlightView),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.byWidgetPredicate(
         (widget) =>
@@ -370,7 +376,7 @@ SELECT 1;
 
     await tester.pump();
 
-    expect(find.byType(HighlightView), findsNWidgets(2));
+    expect(find.byType(SelectableHighlightView), findsNWidgets(2));
     expect(
       find.byWidgetPredicate(
         (widget) =>
@@ -406,7 +412,7 @@ void main() {}
 
     await tester.pump();
 
-    final highlightView = tester.widget<HighlightView>(find.byType(HighlightView));
+    final highlightView = tester.widget<SelectableHighlightView>(find.byType(SelectableHighlightView));
     expect(highlightView.textStyle?.fontSize, 27.0);
   });
 }
