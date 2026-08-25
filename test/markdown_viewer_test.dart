@@ -299,6 +299,12 @@ void main() {
     expect(zoomed.p?.fontSize, 24);
     expect(normal.h1?.fontSize, 32);
     expect(zoomed.h1?.fontSize, 48);
+    expect(normal.code?.fontSize, 13.5);
+    expect(zoomed.code?.fontSize, 20.25);
+    expect(normal.tableBody?.fontSize, 16);
+    expect(zoomed.tableBody?.fontSize, 24);
+    expect(normal.tableHead?.fontSize, 16);
+    expect(zoomed.tableHead?.fontSize, 24);
   });
 
   testWidgets('renders plain fenced code blocks', (

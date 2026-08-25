@@ -153,8 +153,11 @@ MarkdownStyleSheet buildViewerMarkdownStyleSheet(
         top: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
       ),
     ),
-    tableHead: bodyFont.copyWith(fontWeight: FontWeight.bold),
-    tableBody: bodyFont,
+    tableHead: bodyFont.copyWith(
+      fontSize: 16 * fontScale,
+      fontWeight: FontWeight.bold,
+    ),
+    tableBody: bodyFont.copyWith(fontSize: 16 * fontScale),
     tableBorder: TableBorder.all(
       color: theme.colorScheme.outlineVariant,
       width: 1,
@@ -198,14 +201,26 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     if (code.isEmpty) return const SizedBox.shrink();
 
     final language = _normalizeCodeLanguage(element.attributes['language']);
+    final effectiveFontSize =
+        preferredStyle?.fontSize ?? parentStyle?.fontSize ?? 13.5;
+    final effectiveFontFamily =
+        (preferredStyle ?? parentStyle)?.fontFamily ?? 'FiraCode';
     final textStyle = (preferredStyle ?? parentStyle ?? const TextStyle())
         .copyWith(
           color: codeForeground,
-          fontFamily:
-              (preferredStyle ?? parentStyle)?.fontFamily ?? 'FiraCode',
+          fontFamily: effectiveFontFamily,
+          fontSize: effectiveFontSize,
         );
     final theme = Map<String, TextStyle>.from(
       isDark ? monokaiSublimeTheme : githubTheme,
+    ).map(
+      (token, style) => MapEntry(
+        token,
+        style.copyWith(
+          fontFamily: effectiveFontFamily,
+          fontSize: effectiveFontSize,
+        ),
+      ),
     );
     final rootStyle = (theme['root'] ?? const TextStyle()).copyWith(
       backgroundColor: Colors.transparent,
@@ -308,7 +323,7 @@ class MarkdownViewer extends StatelessWidget {
           vertical: 24,
         ),
         child: MarkdownBody(
-          key: ValueKey<String>('${searchQuery.trim()}::$activeMatchIndex'),
+          key: ValueKey<String>(searchQuery.trim()),
           data: content,
           selectable: true,
           shrinkWrap: true,
@@ -325,6 +340,7 @@ class MarkdownViewer extends StatelessWidget {
               isDark: isDark,
               codeBackground: codeBackground,
               codeForeground: theme.colorScheme.onSurface,
+              fontScale: fontScale,
             ),
             if (query.isNotEmpty)
               _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
@@ -582,11 +598,13 @@ class _MermaidBlockBuilder extends MarkdownElementBuilder {
     required this.isDark,
     required this.codeBackground,
     required this.codeForeground,
+    required this.fontScale,
   });
 
   final bool isDark;
   final Color codeBackground;
   final Color codeForeground;
+  final double fontScale;
 
   @override
   bool isBlockElement() => true;
@@ -607,6 +625,7 @@ class _MermaidBlockBuilder extends MarkdownElementBuilder {
         isDark: isDark,
         backgroundColor: codeBackground,
         foregroundColor: codeForeground,
+        fontScale: fontScale,
       );
     }
     return const SizedBox.shrink();

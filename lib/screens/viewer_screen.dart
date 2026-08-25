@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -11,7 +12,6 @@ import '../widgets/markdown_viewer.dart';
 import '../widgets/search_panel.dart';
 import '../widgets/toc_panel.dart';
 import '../widgets/document_footer.dart';
-import '../widgets/toc_panel.dart';
 import '../dialogs/about_dialog.dart';
 import '../models/toc_entry.dart';
 import '../models/document_stats.dart';
@@ -184,20 +184,35 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     try {
       final content = await FileService.readMarkdown(path);
       _watchFile(path);
+
+      final statsFuture = content.length > 20000
+          ? Isolate.run(() => DocumentStats.fromMarkdown(content))
+          : Future.value(DocumentStats.fromMarkdown(content));
+      final tocFuture = content.length > 20000
+          ? Isolate.run(() => TocEntry.fromMarkdown(content))
+          : Future.value(TocEntry.fromMarkdown(content));
+
+      final stats = await statsFuture;
+      final tocEntries = await tocFuture;
+
+      if (!mounted) return;
+
       setState(() {
         _filePath = path;
         _markdownContent = content;
-        _stats = DocumentStats.fromMarkdown(content);
+        _stats = stats;
         _isLoading = false;
-        _tocEntries = TocEntry.fromMarkdown(content);
+        _tocEntries = tocEntries;
         _recomputeMatchCount();
       });
       await windowManager.setTitle(p.basename(path));
     } on FileServiceException catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.message;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.message;
+        });
+      }
     }
   }
 
@@ -212,10 +227,22 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     if (_filePath == null) return;
     try {
       final content = await FileService.readMarkdown(_filePath!);
+      final statsFuture = content.length > 20000
+          ? Isolate.run(() => DocumentStats.fromMarkdown(content))
+          : Future.value(DocumentStats.fromMarkdown(content));
+      final tocFuture = content.length > 20000
+          ? Isolate.run(() => TocEntry.fromMarkdown(content))
+          : Future.value(TocEntry.fromMarkdown(content));
+
+      final stats = await statsFuture;
+      final tocEntries = await tocFuture;
+
+      if (!mounted) return;
+
       setState(() {
         _markdownContent = content;
-        _stats = DocumentStats.fromMarkdown(content);
-        _tocEntries = TocEntry.fromMarkdown(content);
+        _stats = stats;
+        _tocEntries = tocEntries;
         _recomputeMatchCount();
       });
     } catch (_) {
