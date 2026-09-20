@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'dart:convert';
 
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -314,26 +315,113 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     );
     theme['root'] = rootStyle;
 
+    return _CodeBlockContainer(
+      code: code,
+      language: language,
+      theme: theme,
+      codeBackground: codeBackground,
+      codeForeground: codeForeground,
+      textStyle: textStyle,
+    );
+  }
+}
+
+/// Container for code blocks that includes syntax highlighting via [SelectableHighlightView]
+/// and a copy-to-clipboard button in the top-right corner.
+class _CodeBlockContainer extends StatefulWidget {
+  const _CodeBlockContainer({
+    required this.code,
+    required this.language,
+    required this.theme,
+    required this.codeBackground,
+    required this.codeForeground,
+    this.textStyle,
+  });
+
+  final String code;
+  final String language;
+  final Map<String, TextStyle> theme;
+  final Color codeBackground;
+  final Color codeForeground;
+  final TextStyle? textStyle;
+
+  @override
+  State<_CodeBlockContainer> createState() => _CodeBlockContainerState();
+}
+
+class _CodeBlockContainerState extends State<_CodeBlockContainer> {
+  bool _copied = false;
+
+  Future<void> _copyToClipboard() async {
+    await Clipboard.setData(ClipboardData(text: widget.code));
+    if (!mounted) return;
+    setState(() => _copied = true);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied to clipboard!'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+        width: 200,
+      ),
+    );
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final outlineColor = Theme.of(context).colorScheme.outlineVariant;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 4),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: codeBackground,
+        color: widget.codeBackground,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant,
+          color: outlineColor,
           width: 1,
         ),
       ),
-      child: SelectionArea(
-        child: SelectableHighlightView(
-          code,
-          language: language,
-          theme: theme,
-          padding: const EdgeInsets.all(16),
-          textStyle: textStyle,
-        ),
+      child: Stack(
+        children: [
+          SelectionArea(
+            child: SelectableHighlightView(
+              widget.code,
+              language: widget.language,
+              theme: widget.theme,
+              padding: const EdgeInsets.fromLTRB(16, 16, 48, 16),
+              textStyle: widget.textStyle,
+            ),
+          ),
+          Positioned(
+            top: 6,
+            right: 6,
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+              child: IconButton(
+                iconSize: 16,
+                constraints: const BoxConstraints(
+                  minWidth: 28,
+                  minHeight: 28,
+                ),
+                padding: const EdgeInsets.all(4),
+                icon: Icon(
+                  _copied ? Icons.check_rounded : Icons.content_copy_rounded,
+                  color: _copied
+                      ? const Color(0xFF2EA043)
+                      : widget.codeForeground.withOpacity(0.6),
+                ),
+                tooltip: _copied ? 'Copied!' : 'Copy to clipboard',
+                onPressed: _copyToClipboard,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -737,27 +825,13 @@ class _MermaidBlockBuilder extends MarkdownElementBuilder {
     );
     theme['root'] = rootStyle;
 
-    final codeBlockWidget = Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: codeBackground,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant,
-          width: 1,
-        ),
-      ),
-      child: SelectionArea(
-        child: SelectableHighlightView(
-          code,
-          language: 'mermaid',
-          theme: theme,
-          padding: const EdgeInsets.all(16),
-          textStyle: textStyle,
-        ),
-      ),
+    final codeBlockWidget = _CodeBlockContainer(
+      code: code,
+      language: 'mermaid',
+      theme: theme,
+      codeBackground: codeBackground,
+      codeForeground: codeForeground,
+      textStyle: textStyle,
     );
 
     return Column(

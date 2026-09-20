@@ -452,4 +452,35 @@ graph TD
       findsOneWidget,
     );
   });
+
+  testWidgets('renders copy button on code block and updates icon on click', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownViewer(
+            content: '''
+```dart
+print("Hello World");
+```
+''',
+            scrollController: controller,
+            basePath: '.',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    final copyButtonFinder = find.byIcon(Icons.content_copy_rounded);
+    expect(copyButtonFinder, findsOneWidget);
+
+    final iconButton = tester.widget<IconButton>(find.byType(IconButton).first);
+    expect(iconButton.tooltip, 'Copy to clipboard');
+  });
 }
