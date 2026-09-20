@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show SingleActivator;
 import 'package:path/path.dart' as p;
 
+import 'xdg_config.dart';
+
 /// Logical actions the app can trigger via a keyboard shortcut.
 ///
 /// Bindings are NOT hardcoded key combinations in source. They are resolved
@@ -52,20 +54,7 @@ class KeybindingsService {
 
   /// Directory holding the keybindings config: XDG Base Directory on
   /// Linux/macOS, `%APPDATA%` on Windows.
-  static Directory configDir() {
-    if (Platform.isWindows) {
-      final appData = Platform.environment['APPDATA'];
-      if (appData != null && appData.isNotEmpty) {
-        return Directory(p.join(appData, 'veloxmd'));
-      }
-    }
-    final xdgConfigHome = Platform.environment['XDG_CONFIG_HOME'];
-    final home = Platform.environment['HOME'] ?? '.';
-    final base = (xdgConfigHome != null && xdgConfigHome.isNotEmpty)
-        ? xdgConfigHome
-        : p.join(home, '.config');
-    return Directory(p.join(base, 'veloxmd'));
-  }
+  static Directory configDir() => veloxmdConfigDir();
 
   static File configFile() =>
       File(p.join(configDir().path, 'keybindings.json'));

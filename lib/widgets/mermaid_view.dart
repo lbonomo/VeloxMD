@@ -300,6 +300,7 @@ class MermaidView extends StatefulWidget {
     required this.isDark,
     required this.backgroundColor,
     required this.foregroundColor,
+    required this.codeFontFamily,
     required this.fontScale,
   });
 
@@ -307,6 +308,7 @@ class MermaidView extends StatefulWidget {
   final bool isDark;
   final Color backgroundColor;
   final Color foregroundColor;
+  final String codeFontFamily;
   final double fontScale;
 
   @override
@@ -423,6 +425,7 @@ class _MermaidViewState extends State<MermaidView> {
           isDark: widget.isDark,
           backgroundColor: widget.backgroundColor,
           foregroundColor: widget.foregroundColor,
+          codeFontFamily: widget.codeFontFamily,
           fontScale: widget.fontScale,
         ),
       ),
@@ -446,6 +449,7 @@ class _MermaidViewState extends State<MermaidView> {
       return _RawFallback(
         code: widget.code,
         foregroundColor: widget.foregroundColor,
+        codeFontFamily: widget.codeFontFamily,
         fontScale: widget.fontScale,
       );
     }
@@ -508,6 +512,7 @@ class MermaidFullScreenPage extends StatefulWidget {
     required this.isDark,
     required this.backgroundColor,
     required this.foregroundColor,
+    required this.codeFontFamily,
     required this.fontScale,
   });
 
@@ -515,6 +520,7 @@ class MermaidFullScreenPage extends StatefulWidget {
   final bool isDark;
   final Color backgroundColor;
   final Color foregroundColor;
+  final String codeFontFamily;
   final double fontScale;
 
   @override
@@ -582,6 +588,7 @@ class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
                     ? _RawFallback(
                         code: widget.code,
                         foregroundColor: widget.foregroundColor,
+                        codeFontFamily: widget.codeFontFamily,
                         fontScale: widget.fontScale,
                       )
                     : ValueListenableBuilder<bool>(
@@ -617,11 +624,13 @@ class _RawFallback extends StatelessWidget {
   const _RawFallback({
     required this.code,
     required this.foregroundColor,
+    required this.codeFontFamily,
     required this.fontScale,
   });
 
   final String code;
   final Color foregroundColor;
+  final String codeFontFamily;
   final double fontScale;
 
   @override
@@ -648,8 +657,7 @@ class _RawFallback extends StatelessWidget {
           const SizedBox(height: 8),
           SelectableText(
             code,
-            style: const TextStyle(fontFamily: 'FiraCode', fontSize: 13.5)
-                .copyWith(fontSize: 13.5 * fontScale)
+            style: TextStyle(fontFamily: codeFontFamily, fontSize: 13.5 * fontScale)
                 .copyWith(color: foregroundColor),
           ),
         ],

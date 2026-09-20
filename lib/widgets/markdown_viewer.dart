@@ -80,14 +80,17 @@ int countHighlightMatches(String content, String query) {
 MarkdownStyleSheet buildViewerMarkdownStyleSheet(
   ThemeData theme, {
   required bool isDark,
-  required bool useBundledFonts,
+  String? bodyFontFamily,
+  String? codeFontFamily,
   required double fontScale,
 }) {
-  final codeFont = useBundledFonts
-      ? TextStyle(fontFamily: 'FiraCode', fontSize: 13.5 * fontScale)
-      : TextStyle(fontFamily: 'monospace', fontSize: 13.5 * fontScale);
-  final bodyFont =
-      useBundledFonts ? const TextStyle(fontFamily: 'Inter') : const TextStyle();
+  final codeFont = TextStyle(
+    fontFamily: codeFontFamily ?? 'monospace',
+    fontSize: 13.5 * fontScale,
+  );
+  final bodyFont = bodyFontFamily == null
+      ? const TextStyle()
+      : TextStyle(fontFamily: bodyFontFamily);
 
   final codeBg = isDark
       ? theme.colorScheme.surfaceContainerHighest
@@ -265,12 +268,14 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     required this.isDark,
     required this.codeBackground,
     required this.codeForeground,
+    required this.codeFontFamily,
     required this.fontScale,
   });
 
   final bool isDark;
   final Color codeBackground;
   final Color codeForeground;
+  final String codeFontFamily;
   final double fontScale;
 
   @override
@@ -291,7 +296,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
         preferredStyle?.fontSize ?? parentStyle?.fontSize ?? 13.5;
     final effectiveFontSize = baseFontSize * fontScale;
     final effectiveFontFamily =
-        (preferredStyle ?? parentStyle)?.fontFamily ?? 'FiraCode';
+        (preferredStyle ?? parentStyle)?.fontFamily ?? codeFontFamily;
     final textStyle = (preferredStyle ?? parentStyle ?? const TextStyle())
         .copyWith(
           color: codeForeground,
@@ -461,7 +466,8 @@ class MarkdownViewer extends StatelessWidget {
     required this.basePath,
     this.searchQuery = '',
     this.activeMatchIndex = 0,
-    this.useBundledFonts = true,
+    this.bodyFontFamily,
+    this.codeFontFamily,
     this.horizontalPadding = 32,
     this.fontScale = 1.0,
   });
@@ -471,7 +477,15 @@ class MarkdownViewer extends StatelessWidget {
   final String basePath;
   final String searchQuery;
   final int activeMatchIndex;
-  final bool useBundledFonts;
+
+  /// Body text font family, e.g. the desktop's detected sans-serif font.
+  /// Null uses the ambient [Theme]'s default (no override).
+  final String? bodyFontFamily;
+
+  /// Code block font family, e.g. the desktop's detected monospace font.
+  /// Null falls back to the platform's generic `monospace`.
+  final String? codeFontFamily;
+
   final double horizontalPadding;
   final double fontScale;
 
@@ -516,12 +530,14 @@ class MarkdownViewer extends StatelessWidget {
               isDark: isDark,
               codeBackground: codeBackground,
               codeForeground: theme.colorScheme.onSurface,
+              codeFontFamily: codeFontFamily ?? 'monospace',
               fontScale: fontScale,
             ),
             'mermaid': _MermaidBlockBuilder(
               isDark: isDark,
               codeBackground: codeBackground,
               codeForeground: theme.colorScheme.onSurface,
+              codeFontFamily: codeFontFamily ?? 'monospace',
               fontScale: fontScale,
             ),
             if (query.isNotEmpty)
@@ -550,7 +566,8 @@ class MarkdownViewer extends StatelessWidget {
     return buildViewerMarkdownStyleSheet(
       Theme.of(context),
       isDark: isDark,
-      useBundledFonts: useBundledFonts,
+      bodyFontFamily: bodyFontFamily,
+      codeFontFamily: codeFontFamily,
       fontScale: fontScale,
     );
   }
@@ -780,12 +797,14 @@ class _MermaidBlockBuilder extends MarkdownElementBuilder {
     required this.isDark,
     required this.codeBackground,
     required this.codeForeground,
+    required this.codeFontFamily,
     required this.fontScale,
   });
 
   final bool isDark;
   final Color codeBackground;
   final Color codeForeground;
+  final String codeFontFamily;
   final double fontScale;
 
   @override
@@ -806,7 +825,7 @@ class _MermaidBlockBuilder extends MarkdownElementBuilder {
         preferredStyle?.fontSize ?? parentStyle?.fontSize ?? 13.5;
     final effectiveFontSize = baseFontSize * fontScale;
     final effectiveFontFamily =
-        (preferredStyle ?? parentStyle)?.fontFamily ?? 'FiraCode';
+        (preferredStyle ?? parentStyle)?.fontFamily ?? codeFontFamily;
     final textStyle = (preferredStyle ?? parentStyle ?? const TextStyle())
         .copyWith(
           color: codeForeground,
@@ -848,6 +867,7 @@ class _MermaidBlockBuilder extends MarkdownElementBuilder {
           isDark: isDark,
           backgroundColor: codeBackground,
           foregroundColor: codeForeground,
+          codeFontFamily: codeFontFamily,
           fontScale: fontScale,
         ),
         const SizedBox(height: 8),
