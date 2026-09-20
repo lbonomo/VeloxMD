@@ -373,6 +373,12 @@ class _CodeBlockContainerState extends State<_CodeBlockContainer> {
   @override
   Widget build(BuildContext context) {
     final outlineColor = Theme.of(context).colorScheme.outlineVariant;
+    final buttonBg = _copied
+        ? const Color(0xFF2EA043).withOpacity(0.15)
+        : widget.codeForeground.withOpacity(0.08);
+    final iconColor = _copied
+        ? const Color(0xFF2EA043)
+        : widget.codeForeground.withOpacity(0.7);
 
     return Container(
       width: double.infinity,
@@ -400,24 +406,23 @@ class _CodeBlockContainerState extends State<_CodeBlockContainer> {
           Positioned(
             top: 6,
             right: 6,
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(4),
-              child: IconButton(
-                iconSize: 16,
-                constraints: const BoxConstraints(
-                  minWidth: 28,
-                  minHeight: 28,
+            child: Tooltip(
+              message: _copied ? 'Copied!' : 'Copy to clipboard',
+              child: Material(
+                color: buttonBg,
+                borderRadius: BorderRadius.circular(6),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: _copyToClipboard,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(
+                      _copied ? Icons.check : Icons.copy,
+                      size: 14,
+                      color: iconColor,
+                    ),
+                  ),
                 ),
-                padding: const EdgeInsets.all(4),
-                icon: Icon(
-                  _copied ? Icons.check_rounded : Icons.content_copy_rounded,
-                  color: _copied
-                      ? const Color(0xFF2EA043)
-                      : widget.codeForeground.withOpacity(0.6),
-                ),
-                tooltip: _copied ? 'Copied!' : 'Copy to clipboard',
-                onPressed: _copyToClipboard,
               ),
             ),
           ),

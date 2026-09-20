@@ -477,10 +477,12 @@ print("Hello World");
 
     await tester.pump();
 
-    final copyButtonFinder = find.byIcon(Icons.content_copy_rounded);
+    final copyButtonFinder = find.byIcon(Icons.copy);
     expect(copyButtonFinder, findsOneWidget);
 
-    final iconButton = tester.widget<IconButton>(find.byType(IconButton).first);
-    expect(iconButton.tooltip, 'Copy to clipboard');
+    final tooltipFinder = find.byWidgetPredicate(
+      (widget) => widget is Tooltip && widget.message == 'Copy to clipboard',
+    );
+    expect(tooltipFinder, findsOneWidget);
   });
 }
