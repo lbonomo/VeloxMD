@@ -2,7 +2,7 @@ name: veloxmd
 description: A fast Markdown viewer for Linux desktop.
 publish_to: 'none'
 
-version: 1.0.5+13
+version: 1.0.6+14
 
 environment:
   sdk: '>=3.6.0 <4.0.0'

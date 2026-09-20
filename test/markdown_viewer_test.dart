@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:veloxmd/widgets/markdown_viewer.dart';
+import 'package:veloxmd/widgets/mermaid_view.dart';
 
 void main() {
   testWidgets('highlights search matches without changing their case', (
@@ -414,5 +415,41 @@ void main() {}
 
     final highlightView = tester.widget<SelectableHighlightView>(find.byType(SelectableHighlightView));
     expect(highlightView.textStyle?.fontSize, 27.0);
+  });
+
+  testWidgets('renders mermaid diagram blocks with selectable code block', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownViewer(
+            content: '''
+```mermaid
+graph TD
+  A --> B
+```
+''',
+            scrollController: controller,
+            basePath: '.',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.byType(MermaidView), findsOneWidget);
+    expect(find.byType(SelectableHighlightView), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(SelectionArea),
+        matching: find.byType(SelectableHighlightView),
+      ),
+      findsOneWidget,
+    );
   });
 }

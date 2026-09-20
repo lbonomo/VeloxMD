@@ -707,16 +707,73 @@ class _MermaidBlockBuilder extends MarkdownElementBuilder {
   ) {
     final code = decodeHtmlEntities(element.attributes['content'] ?? '')
         .trimRight();
-    if (code.isNotEmpty) {
-      return MermaidView(
-        key: _mermaidViewKey(code, isDark),
-        code: code,
-        isDark: isDark,
-        backgroundColor: codeBackground,
-        foregroundColor: codeForeground,
-        fontScale: fontScale,
-      );
-    }
-    return const SizedBox.shrink();
+    if (code.isEmpty) return const SizedBox.shrink();
+
+    final baseFontSize =
+        preferredStyle?.fontSize ?? parentStyle?.fontSize ?? 13.5;
+    final effectiveFontSize = baseFontSize * fontScale;
+    final effectiveFontFamily =
+        (preferredStyle ?? parentStyle)?.fontFamily ?? 'FiraCode';
+    final textStyle = (preferredStyle ?? parentStyle ?? const TextStyle())
+        .copyWith(
+          color: codeForeground,
+          fontFamily: effectiveFontFamily,
+          fontSize: effectiveFontSize,
+        );
+    final theme = Map<String, TextStyle>.from(
+      isDark ? monokaiSublimeTheme : githubTheme,
+    ).map(
+      (token, style) => MapEntry(
+        token,
+        style.copyWith(
+          fontFamily: effectiveFontFamily,
+          fontSize: effectiveFontSize,
+        ),
+      ),
+    );
+    final rootStyle = (theme['root'] ?? const TextStyle()).copyWith(
+      backgroundColor: Colors.transparent,
+      color: codeForeground,
+    );
+    theme['root'] = rootStyle;
+
+    final codeBlockWidget = Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: codeBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 1,
+        ),
+      ),
+      child: SelectionArea(
+        child: SelectableHighlightView(
+          code,
+          language: 'mermaid',
+          theme: theme,
+          padding: const EdgeInsets.all(16),
+          textStyle: textStyle,
+        ),
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        MermaidView(
+          key: _mermaidViewKey(code, isDark),
+          code: code,
+          isDark: isDark,
+          backgroundColor: codeBackground,
+          foregroundColor: codeForeground,
+          fontScale: fontScale,
+        ),
+        const SizedBox(height: 8),
+        codeBlockWidget,
+      ],
+    );
   }
 }

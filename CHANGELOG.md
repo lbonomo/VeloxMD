@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.6 - 2026-09-20
+
+### 🐛 Bug Fixes
+- **Selectable Render Blocks**:
+  - Included a selectable syntax-highlighted code block for render blocks (Mermaid diagrams) so that all diagram source text can be selected and copied.
+
 ## 1.0.5 - 2026-08-25
 
 ### 🐛 Bug Fixes

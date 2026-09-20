@@ -324,6 +324,7 @@ class _MermaidViewState extends State<MermaidView> {
   double _height = _initialHeight;
   bool _failed = false;
   bool _disposed = false;
+  bool _initialized = false;
 
   @override
   void initState() {
@@ -364,6 +365,7 @@ class _MermaidViewState extends State<MermaidView> {
         WebviewEventsListener(onLoadEnd: (_, __) => _pollHeight()),
       );
       await _controller!.initialize(url);
+      _initialized = true;
     } catch (e) {
       MermaidRuntime.disableWebview();
       if (mounted) setState(() => _failed = true);
@@ -430,7 +432,11 @@ class _MermaidViewState extends State<MermaidView> {
   @override
   void dispose() {
     _disposed = true;
-    _controller?.dispose();
+    if (_initialized) {
+      try {
+        _controller?.dispose();
+      } catch (_) {}
+    }
     super.dispose();
   }
 
@@ -552,7 +558,9 @@ class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    try {
+      _controller?.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
