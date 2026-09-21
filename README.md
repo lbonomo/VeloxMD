@@ -71,6 +71,7 @@ Otherwise, see [Building from source](#building-from-source) below.
 - **Show the table of contents:** press `Ctrl+T`.
 - **Open the search panel:** press `Ctrl+F`.
 - **Switch light / dark theme:** use the toggle in the toolbar.
+- **View document source:** press `Ctrl+U` to toggle between raw Markdown and rendered view.
 - **Reload a file:** press `Ctrl+R` or `F5`.
 - **Change font size:** press `Ctrl++`, `Ctrl+-`, or `Ctrl+0`.
 
@@ -80,6 +81,7 @@ Otherwise, see [Building from source](#building-from-source) below.
 |----------|--------|
 | `Ctrl+O` | Open a file |
 | `Ctrl+T` | Show / hide the table of contents |
+| `Ctrl+U` | Toggle raw document source / rendered view |
 | `Ctrl+F` | Show / hide the search panel |
 | `Ctrl++` / `Ctrl+-` / `Ctrl+0` | Increase / decrease / reset font size |
 | `Ctrl+R` / `F5` | Reload the current file |
@@ -102,6 +104,7 @@ the main-row key or the numpad's), so you don't need to list both explicitly.
   "open_file": ["ctrl+o"],
   "reload": ["ctrl+r", "f5"],
   "toggle_toc": ["ctrl+t"],
+  "toggle_view_source": ["ctrl+u"],
   "focus_search": ["ctrl+f"],
   "increase_font_size": ["ctrl+plus"],
   "decrease_font_size": ["ctrl+minus"],

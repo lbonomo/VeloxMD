@@ -9,6 +9,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart' as p;
 import '../widgets/markdown_viewer.dart';
+import '../widgets/source_viewer.dart';
 import '../widgets/search_panel.dart';
 import '../widgets/toc_panel.dart';
 import '../widgets/document_footer.dart';
@@ -44,6 +45,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   String _markdownContent = '';
   bool _isLoading = false;
   String? _errorMessage;
+  bool _showSource = false;
   bool _tocVisible = false;
   List<TocEntry> _tocEntries = [];
   DocumentStats _stats = DocumentStats.fromMarkdown('');
@@ -371,6 +373,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
           a: const _ReloadIntent(),
         for (final a in widget.keybindings[KeyAction.toggleToc])
           a: const _ToggleTocIntent(),
+        for (final a in widget.keybindings[KeyAction.toggleViewSource])
+          a: const _ToggleViewSourceIntent(),
         for (final a in widget.keybindings[KeyAction.focusSearch])
           a: const _FocusSearchIntent(),
         for (final a in widget.keybindings[KeyAction.increaseFontSize])
@@ -390,6 +394,9 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         ),
         _ToggleTocIntent: CallbackAction<_ToggleTocIntent>(
           onInvoke: (_) => setState(() => _tocVisible = !_tocVisible),
+        ),
+        _ToggleViewSourceIntent: CallbackAction<_ToggleViewSourceIntent>(
+          onInvoke: (_) => setState(() => _showSource = !_showSource),
         ),
         _FocusSearchIntent: CallbackAction<_FocusSearchIntent>(
           onInvoke: (_) {
@@ -460,6 +467,14 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             tooltip:
                 'Toggle Table of Contents (${widget.keybindings.label(KeyAction.toggleToc)})',
             onPressed: () => setState(() => _tocVisible = !_tocVisible),
+          ),
+        if (_filePath != null)
+          IconButton(
+            icon: Icon(_showSource ? Icons.visibility : Icons.code),
+            tooltip: _showSource
+                ? 'Render markdown (${widget.keybindings.label(KeyAction.toggleViewSource)})'
+                : 'View document source (${widget.keybindings.label(KeyAction.toggleViewSource)})',
+            onPressed: () => setState(() => _showSource = !_showSource),
           ),
         if (_filePath != null) _buildMarginControl(context),
         IconButton(
@@ -594,17 +609,25 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             onClear: _clearSearch,
           ),
         Expanded(
-          child: MarkdownViewer(
-            content: _markdownContent,
-            scrollController: _scrollController,
-            basePath: p.dirname(_filePath!),
-            searchQuery: _searchQuery,
-            activeMatchIndex: _activeMatchIndex,
-            horizontalPadding: _horizontalMargin,
-            fontScale: _fontScale,
-            bodyFontFamily: widget.fonts.uiFontFamily,
-            codeFontFamily: widget.fonts.codeFontFamily,
-          ),
+          child: _showSource
+              ? SourceViewer(
+                  content: _markdownContent,
+                  scrollController: _scrollController,
+                  horizontalPadding: _horizontalMargin,
+                  fontScale: _fontScale,
+                  codeFontFamily: widget.fonts.codeFontFamily,
+                )
+              : MarkdownViewer(
+                  content: _markdownContent,
+                  scrollController: _scrollController,
+                  basePath: p.dirname(_filePath!),
+                  searchQuery: _searchQuery,
+                  activeMatchIndex: _activeMatchIndex,
+                  horizontalPadding: _horizontalMargin,
+                  fontScale: _fontScale,
+                  bodyFontFamily: widget.fonts.uiFontFamily,
+                  codeFontFamily: widget.fonts.codeFontFamily,
+                ),
         ),
       ],
     );
@@ -681,3 +704,8 @@ class _DecreaseFontSizeIntent extends Intent {
 class _ResetFontSizeIntent extends Intent {
   const _ResetFontSizeIntent();
 }
+
+class _ToggleViewSourceIntent extends Intent {
+  const _ToggleViewSourceIntent();
+}
+

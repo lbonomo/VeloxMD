@@ -194,6 +194,7 @@ class _VeloxAboutDialogState extends State<VeloxAboutDialog> {
                     '• Instant rendering of .md, .markdown, and .txt files\n'
                     '• Native Linux desktop integration (GTK, Wayland/X11)\n'
                     '• Auto-generated Table of Contents\n'
+                    '• Raw source document view (Ctrl+U)\n'
                     '• Live file reloading\n'
                     '• Dark/Light theme support\n'
                     '• GitHub-Flavoured Markdown (tables, strikethrough, tasks)\n'
