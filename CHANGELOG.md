@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.7 - 2026-09-21
+
+### ✨ Features
+- **Code Block Copy Button**:
+  - Added a copy-to-clipboard button on fenced code blocks for quick copying of code snippets with visual feedback.
+- **Desktop Font Configuration**:
+  - Automatically follow the desktop's system fonts (sans-serif and monospace) with optional configuration overrides.
+- **Collaborator**:
+  - Added Javier Bértoli as collaborator in About dialog.
+
 ## 1.0.6 - 2026-09-20
 
 ### 🐛 Bug Fixes
