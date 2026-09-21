@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.8 - 2026-09-21
+
+### ✨ Features
+- **View Document Source (Ctrl+U)**:
+  - Added ability to toggle between rendered Markdown and raw, unrendered document source text via `Ctrl+U` keyboard shortcut or the toolbar icon button.
+  - Text selection, monospace typography, padding, and font scaling are fully supported in raw source mode.
+
 ## 1.0.7 - 2026-09-21
 
 ### ✨ Features
