@@ -16,6 +16,8 @@ class VeloxAboutDialog extends StatefulWidget {
   static const String developerWebsite = 'https://lucasbonomo.com';
   static const String developerGithub = 'https://github.com/lbonomo';
   static const String developerLinkedin = 'https://www.linkedin.com/in/lbonomo/';
+  static const String collaboratorName = 'Javier Bértoli';
+  static const String collaboratorGithub = 'https://github.com/javierbertoli';
 
   @override
   State<VeloxAboutDialog> createState() => _VeloxAboutDialogState();
@@ -131,6 +133,8 @@ class _VeloxAboutDialogState extends State<VeloxAboutDialog> {
     const developerWebsite = VeloxAboutDialog.developerWebsite;
     const developerGithub = VeloxAboutDialog.developerGithub;
     const developerLinkedin = VeloxAboutDialog.developerLinkedin;
+    const collaboratorName = VeloxAboutDialog.collaboratorName;
+    const collaboratorGithub = VeloxAboutDialog.collaboratorGithub;
 
     return Dialog(
       child: Container(
@@ -266,6 +270,39 @@ class _VeloxAboutDialogState extends State<VeloxAboutDialog> {
                           theme: theme,
                         ),
                       ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Collaborators Section
+              Text(
+                '🤝 Collaborators',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Text(
+                      collaboratorName,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    _LinkButton(
+                      label: 'GitHub Profile',
+                      icon: Icons.person,
+                      onPressed: () => _launchUrl(collaboratorGithub),
+                      theme: theme,
                     ),
                   ],
                 ),
