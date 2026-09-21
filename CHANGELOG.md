@@ -1,8 +1,43 @@
 # Changelog
 
-## Unreleased
+## 1.0.6 - 2026-09-20
+
+### 🐛 Bug Fixes
+- **Selectable Render Blocks**:
+  - Included a selectable syntax-highlighted code block for render blocks (Mermaid diagrams) so that all diagram source text can be selected and copied.
+
+## 1.0.5 - 2026-08-25
+
+### 🐛 Bug Fixes
+- **Selectable Code Blocks**:
+  - Fixed an issue where text within fenced code blocks (``` ```) could not be selected with the mouse to copy/paste. Replaced `HighlightView` with a custom `SelectableHighlightView` widget using `Text.rich`.
+
+## 1.0.4 - 2026-08-25
+
+### 🐛 Bug Fixes
+- **File Chooser Stacking & Modal Focus (#21)**:
+  - Fixed issue where opening files (including documents with Mermaid diagrams) minimized the application window or pushed it behind other open applications.
+  - Implemented GTK native modal file chooser (`GtkFileChooserNative`) linked directly to the main GTK window on Linux via MethodChannel.
+  - The native file selection dialog now stays strictly on top of VeloxMD while keeping the main window in place without minimizing or lowering its stacking order.
+
+## 1.0.3 - 2026-08-24
+
+### ⚡ Performance & Optimization
+- **High-performance text parsing**: eliminated redundant memory allocations in `DocumentStats` and `TocEntry`.
+- **Off-thread processing**: stats and Table of Contents calculation offloaded to isolates (`Isolate.run`) for large documents.
+- **Instant search navigation**: prevented Markdown document AST re-parsing when navigating search matches.
+- **Optimized CEF height polling**: reduced Chromium WebView polling overhead for Mermaid diagrams.
+
+### 🐛 Bug Fixes
+- **Code block zoom scaling**: fixed fenced code blocks (` ``` `) to scale dynamically with font size zoom shortcuts (`Ctrl++`, `Ctrl+-`, `Ctrl+0`).
+
+## 1.0.2 - 2026-08-17
 
 ### ✨ Features
+- **Dedicated search panel**: moved document search out of the AppBar into a
+  side panel with query input, match count, next/previous navigation, and clear
+  action. The search remains debounced and still highlights matches in the
+  rendered document.
 - **Mermaid diagram rendering**: ` ```mermaid ` fenced code blocks are now rendered
   as diagrams (flowchart, sequence, class, state, gantt, pie, etc.).
   - Rendered fully **offline** via a bundled Mermaid runtime inside an embedded

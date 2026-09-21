@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'dart:convert';
 
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:highlight/highlight.dart' show highlight, Node;
 
 import 'mermaid_view.dart';
 
@@ -156,8 +157,11 @@ MarkdownStyleSheet buildViewerMarkdownStyleSheet(
         top: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
       ),
     ),
-    tableHead: bodyFont.copyWith(fontWeight: FontWeight.bold),
-    tableBody: bodyFont,
+    tableHead: bodyFont.copyWith(
+      fontSize: 16 * fontScale,
+      fontWeight: FontWeight.bold,
+    ),
+    tableBody: bodyFont.copyWith(fontSize: 16 * fontScale),
     tableBorder: TableBorder.all(
       color: theme.colorScheme.outlineVariant,
       width: 1,
@@ -175,19 +179,104 @@ MarkdownStyleSheet buildViewerMarkdownStyleSheet(
   );
 }
 
-/// Renders fenced code blocks with syntax highlighting via flutter_highlight.
+/// A custom syntax-highlighted code block widget that uses [Text.rich]
+/// to register itself with the ambient [SelectionArea] and support text selection.
+class SelectableHighlightView extends StatelessWidget {
+  SelectableHighlightView(
+    String input, {
+    super.key,
+    this.language,
+    this.theme = const {},
+    this.padding,
+    this.textStyle,
+    int tabSize = 8,
+  }) : source = input.replaceAll('\t', ' ' * tabSize);
+
+  final String source;
+  final String? language;
+  final Map<String, TextStyle> theme;
+  final EdgeInsetsGeometry? padding;
+  final TextStyle? textStyle;
+
+  List<TextSpan> _convert(List<Node> nodes) {
+    final spans = <TextSpan>[];
+    var currentSpans = spans;
+    final stack = <List<TextSpan>>[];
+
+    void traverse(Node node) {
+      if (node.value != null) {
+        currentSpans.add(node.className == null
+            ? TextSpan(text: node.value)
+            : TextSpan(text: node.value, style: theme[node.className!]));
+      } else if (node.children != null) {
+        final tmp = <TextSpan>[];
+        currentSpans.add(TextSpan(children: tmp, style: theme[node.className!]));
+        stack.add(currentSpans);
+        currentSpans = tmp;
+
+        for (final n in node.children!) {
+          traverse(n);
+          if (n == node.children!.last) {
+            currentSpans = stack.isEmpty ? spans : stack.removeLast();
+          }
+        }
+      }
+    }
+
+    for (final node in nodes) {
+      traverse(node);
+    }
+
+    return spans;
+  }
+
+  static const _rootKey = 'root';
+  static const _defaultFontColor = Color(0xff000000);
+  static const _defaultBackgroundColor = Color(0xffffffff);
+  static const _defaultFontFamily = 'monospace';
+
+  @override
+  Widget build(BuildContext context) {
+    var effectiveTextStyle = TextStyle(
+      fontFamily: _defaultFontFamily,
+      color: theme[_rootKey]?.color ?? _defaultFontColor,
+    );
+    if (textStyle != null) {
+      effectiveTextStyle = effectiveTextStyle.merge(textStyle);
+    }
+
+    return Container(
+      color: theme[_rootKey]?.backgroundColor ?? _defaultBackgroundColor,
+      padding: padding,
+      width: double.infinity,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Text.rich(
+          TextSpan(
+            style: effectiveTextStyle,
+            children: _convert(highlight.parse(source, language: language).nodes ?? []),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Renders fenced code blocks with syntax highlighting via SelectableHighlightView.
 class _CodeBlockBuilder extends MarkdownElementBuilder {
   _CodeBlockBuilder({
     required this.isDark,
     required this.codeBackground,
     required this.codeForeground,
     required this.codeFontFamily,
+    required this.fontScale,
   });
 
   final bool isDark;
   final Color codeBackground;
   final Color codeForeground;
   final String codeFontFamily;
+  final double fontScale;
 
   @override
   bool isBlockElement() => true;
@@ -203,14 +292,27 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     if (code.isEmpty) return const SizedBox.shrink();
 
     final language = _normalizeCodeLanguage(element.attributes['language']);
+    final baseFontSize =
+        preferredStyle?.fontSize ?? parentStyle?.fontSize ?? 13.5;
+    final effectiveFontSize = baseFontSize * fontScale;
+    final effectiveFontFamily =
+        (preferredStyle ?? parentStyle)?.fontFamily ?? codeFontFamily;
     final textStyle = (preferredStyle ?? parentStyle ?? const TextStyle())
         .copyWith(
           color: codeForeground,
-          fontFamily:
-              (preferredStyle ?? parentStyle)?.fontFamily ?? codeFontFamily,
+          fontFamily: effectiveFontFamily,
+          fontSize: effectiveFontSize,
         );
     final theme = Map<String, TextStyle>.from(
       isDark ? monokaiSublimeTheme : githubTheme,
+    ).map(
+      (token, style) => MapEntry(
+        token,
+        style.copyWith(
+          fontFamily: effectiveFontFamily,
+          fontSize: effectiveFontSize,
+        ),
+      ),
     );
     final rootStyle = (theme['root'] ?? const TextStyle()).copyWith(
       backgroundColor: Colors.transparent,
@@ -218,24 +320,118 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     );
     theme['root'] = rootStyle;
 
+    return _CodeBlockContainer(
+      code: code,
+      language: language,
+      theme: theme,
+      codeBackground: codeBackground,
+      codeForeground: codeForeground,
+      textStyle: textStyle,
+    );
+  }
+}
+
+/// Container for code blocks that includes syntax highlighting via [SelectableHighlightView]
+/// and a copy-to-clipboard button in the top-right corner.
+class _CodeBlockContainer extends StatefulWidget {
+  const _CodeBlockContainer({
+    required this.code,
+    required this.language,
+    required this.theme,
+    required this.codeBackground,
+    required this.codeForeground,
+    this.textStyle,
+  });
+
+  final String code;
+  final String language;
+  final Map<String, TextStyle> theme;
+  final Color codeBackground;
+  final Color codeForeground;
+  final TextStyle? textStyle;
+
+  @override
+  State<_CodeBlockContainer> createState() => _CodeBlockContainerState();
+}
+
+class _CodeBlockContainerState extends State<_CodeBlockContainer> {
+  bool _copied = false;
+
+  Future<void> _copyToClipboard() async {
+    await Clipboard.setData(ClipboardData(text: widget.code));
+    if (!mounted) return;
+    setState(() => _copied = true);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied to clipboard!'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+        width: 200,
+      ),
+    );
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final outlineColor = Theme.of(context).colorScheme.outlineVariant;
+    final buttonBg = _copied
+        ? const Color(0xFF2EA043).withOpacity(0.15)
+        : widget.codeForeground.withOpacity(0.08);
+    final iconColor = _copied
+        ? const Color(0xFF2EA043)
+        : widget.codeForeground.withOpacity(0.7);
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 4),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: codeBackground,
+        color: widget.codeBackground,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant,
+          color: outlineColor,
           width: 1,
         ),
       ),
-      child: HighlightView(
-        code,
-        language: language,
-        theme: theme,
-        padding: const EdgeInsets.all(16),
-        textStyle: textStyle,
+      child: Stack(
+        children: [
+          SelectionArea(
+            child: SelectableHighlightView(
+              widget.code,
+              language: widget.language,
+              theme: widget.theme,
+              padding: const EdgeInsets.fromLTRB(16, 16, 48, 16),
+              textStyle: widget.textStyle,
+            ),
+          ),
+          Positioned(
+            top: 6,
+            right: 6,
+            child: Tooltip(
+              message: _copied ? 'Copied!' : 'Copy to clipboard',
+              child: Material(
+                color: buttonBg,
+                borderRadius: BorderRadius.circular(6),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: _copyToClipboard,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(
+                      _copied ? Icons.check : Icons.copy,
+                      size: 14,
+                      color: iconColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -321,7 +517,7 @@ class MarkdownViewer extends StatelessWidget {
           vertical: 24,
         ),
         child: MarkdownBody(
-          key: ValueKey<String>('${searchQuery.trim()}::$activeMatchIndex'),
+          key: ValueKey<String>(searchQuery.trim()),
           data: content,
           selectable: true,
           shrinkWrap: true,
@@ -334,12 +530,14 @@ class MarkdownViewer extends StatelessWidget {
               codeBackground: codeBackground,
               codeForeground: theme.colorScheme.onSurface,
               codeFontFamily: codeFontFamily ?? 'monospace',
+              fontScale: fontScale,
             ),
             'mermaid': _MermaidBlockBuilder(
               isDark: isDark,
               codeBackground: codeBackground,
               codeForeground: theme.colorScheme.onSurface,
               codeFontFamily: codeFontFamily ?? 'monospace',
+              fontScale: fontScale,
             ),
             if (query.isNotEmpty)
               _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
@@ -599,12 +797,14 @@ class _MermaidBlockBuilder extends MarkdownElementBuilder {
     required this.codeBackground,
     required this.codeForeground,
     required this.codeFontFamily,
+    required this.fontScale,
   });
 
   final bool isDark;
   final Color codeBackground;
   final Color codeForeground;
   final String codeFontFamily;
+  final double fontScale;
 
   @override
   bool isBlockElement() => true;
@@ -618,16 +818,60 @@ class _MermaidBlockBuilder extends MarkdownElementBuilder {
   ) {
     final code = decodeHtmlEntities(element.attributes['content'] ?? '')
         .trimRight();
-    if (code.isNotEmpty) {
-      return MermaidView(
-        key: _mermaidViewKey(code, isDark),
-        code: code,
-        isDark: isDark,
-        backgroundColor: codeBackground,
-        foregroundColor: codeForeground,
-        codeFontFamily: codeFontFamily,
-      );
-    }
-    return const SizedBox.shrink();
+    if (code.isEmpty) return const SizedBox.shrink();
+
+    final baseFontSize =
+        preferredStyle?.fontSize ?? parentStyle?.fontSize ?? 13.5;
+    final effectiveFontSize = baseFontSize * fontScale;
+    final effectiveFontFamily =
+        (preferredStyle ?? parentStyle)?.fontFamily ?? codeFontFamily;
+    final textStyle = (preferredStyle ?? parentStyle ?? const TextStyle())
+        .copyWith(
+          color: codeForeground,
+          fontFamily: effectiveFontFamily,
+          fontSize: effectiveFontSize,
+        );
+    final theme = Map<String, TextStyle>.from(
+      isDark ? monokaiSublimeTheme : githubTheme,
+    ).map(
+      (token, style) => MapEntry(
+        token,
+        style.copyWith(
+          fontFamily: effectiveFontFamily,
+          fontSize: effectiveFontSize,
+        ),
+      ),
+    );
+    final rootStyle = (theme['root'] ?? const TextStyle()).copyWith(
+      backgroundColor: Colors.transparent,
+      color: codeForeground,
+    );
+    theme['root'] = rootStyle;
+
+    final codeBlockWidget = _CodeBlockContainer(
+      code: code,
+      language: 'mermaid',
+      theme: theme,
+      codeBackground: codeBackground,
+      codeForeground: codeForeground,
+      textStyle: textStyle,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        MermaidView(
+          key: _mermaidViewKey(code, isDark),
+          code: code,
+          isDark: isDark,
+          backgroundColor: codeBackground,
+          foregroundColor: codeForeground,
+          fontScale: fontScale,
+          codeFontFamily: codeFontFamily,
+        ),
+        const SizedBox(height: 8),
+        codeBlockWidget,
+      ],
+    );
   }
 }

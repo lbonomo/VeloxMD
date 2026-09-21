@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -8,8 +9,9 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart' as p;
 import '../widgets/markdown_viewer.dart';
-import '../widgets/document_footer.dart';
+import '../widgets/search_panel.dart';
 import '../widgets/toc_panel.dart';
+import '../widgets/document_footer.dart';
 import '../dialogs/about_dialog.dart';
 import '../models/toc_entry.dart';
 import '../models/document_stats.dart';
@@ -45,7 +47,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   bool _tocVisible = false;
   List<TocEntry> _tocEntries = [];
   DocumentStats _stats = DocumentStats.fromMarkdown('');
-  final String _version = '1.0.1';
+  final String _version = VeloxAboutDialog.version;
   double _horizontalMargin = 32;
   static const double _minMargin = 0;
   static const double _maxMargin = 320;
@@ -66,6 +68,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   /// the whole document is deferred until the user pauses, avoiding a full
   /// re-parse on every keystroke on large documents.
   String _searchQuery = '';
+  bool _searchVisible = false;
   Timer? _searchDebounce;
   static const Duration _searchDebounceDelay = Duration(milliseconds: 180);
 
@@ -135,26 +138,48 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     // clicked repeatedly or the Ctrl+O shortcut fires while one is already open.
     if (_isPickerOpen) return;
     _isPickerOpen = true;
-    // The native file chooser can open behind the app window (e.g. when the
-    // window is pinned "always on top"). Drop that flag while the dialog is
-    // open so the chooser is never covered, and restore it afterwards.
-    final bool wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
-    if (wasAlwaysOnTop) {
-      await windowManager.setAlwaysOnTop(false);
-    }
+
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
-        dialogTitle: 'Open Markdown file',
-      );
-      if (result != null && result.files.single.path != null) {
-        await _openFile(result.files.single.path!);
+      String? selectedPath;
+      var usedNativeChannel = false;
+
+      if (Platform.isLinux) {
+        try {
+          const channel = MethodChannel('com.veloxmd/file_picker');
+          selectedPath = await channel.invokeMethod<String>('pickFile');
+          usedNativeChannel = true;
+        } on MissingPluginException {
+          usedNativeChannel = false;
+        } catch (_) {
+          usedNativeChannel = false;
+        }
+      }
+
+      if (!usedNativeChannel) {
+        final bool wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
+        if (wasAlwaysOnTop) {
+          await windowManager.setAlwaysOnTop(false);
+        }
+        try {
+          final result = await FilePicker.platform.pickFiles(
+            type: FileType.custom,
+            allowedExtensions: ['md', 'markdown', 'mdc', 'txt'],
+            dialogTitle: 'Open Markdown file',
+            lockParentWindow: true,
+          );
+          selectedPath = result?.files.single.path;
+        } finally {
+          if (wasAlwaysOnTop) {
+            await windowManager.setAlwaysOnTop(true);
+          }
+          await windowManager.focus();
+        }
+      }
+
+      if (selectedPath != null) {
+        await _openFile(selectedPath);
       }
     } finally {
-      if (wasAlwaysOnTop) {
-        await windowManager.setAlwaysOnTop(true);
-      }
       _isPickerOpen = false;
     }
   }
@@ -173,20 +198,35 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     try {
       final content = await FileService.readMarkdown(path);
       _watchFile(path);
+
+      final statsFuture = content.length > 20000
+          ? Isolate.run(() => DocumentStats.fromMarkdown(content))
+          : Future.value(DocumentStats.fromMarkdown(content));
+      final tocFuture = content.length > 20000
+          ? Isolate.run(() => TocEntry.fromMarkdown(content))
+          : Future.value(TocEntry.fromMarkdown(content));
+
+      final stats = await statsFuture;
+      final tocEntries = await tocFuture;
+
+      if (!mounted) return;
+
       setState(() {
         _filePath = path;
         _markdownContent = content;
-        _stats = DocumentStats.fromMarkdown(content);
+        _stats = stats;
         _isLoading = false;
-        _tocEntries = TocEntry.fromMarkdown(content);
+        _tocEntries = tocEntries;
         _recomputeMatchCount();
       });
       await windowManager.setTitle(p.basename(path));
     } on FileServiceException catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.message;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.message;
+        });
+      }
     }
   }
 
@@ -201,10 +241,22 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     if (_filePath == null) return;
     try {
       final content = await FileService.readMarkdown(_filePath!);
+      final statsFuture = content.length > 20000
+          ? Isolate.run(() => DocumentStats.fromMarkdown(content))
+          : Future.value(DocumentStats.fromMarkdown(content));
+      final tocFuture = content.length > 20000
+          ? Isolate.run(() => TocEntry.fromMarkdown(content))
+          : Future.value(TocEntry.fromMarkdown(content));
+
+      final stats = await statsFuture;
+      final tocEntries = await tocFuture;
+
+      if (!mounted) return;
+
       setState(() {
         _markdownContent = content;
-        _stats = DocumentStats.fromMarkdown(content);
-        _tocEntries = TocEntry.fromMarkdown(content);
+        _stats = stats;
+        _tocEntries = tocEntries;
         _recomputeMatchCount();
       });
     } catch (_) {
@@ -224,12 +276,23 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(_searchDebounceDelay, () {
       if (!mounted) return;
-      setState(() {
-        _searchQuery = query;
-        _matchCount = countHighlightMatches(_markdownContent, query);
-        _activeMatchIndex = 0;
-      });
+      _commitSearchQuery(query);
     });
+  }
+
+  void _commitSearchQuery(String query) {
+    setState(() {
+      _searchQuery = query;
+      _matchCount = countHighlightMatches(_markdownContent, query);
+      _activeMatchIndex = 0;
+    });
+  }
+
+  void _flushPendingSearchQuery() {
+    if (_searchDebounce?.isActive ?? false) {
+      _searchDebounce!.cancel();
+    }
+    _commitSearchQuery(_searchController.text);
   }
 
   /// Recomputes the match count for the current query against the current
@@ -249,23 +312,52 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   /// first after the last. Invoked when the user presses Enter in the search
   /// field. Focus stays in the field so repeated Enter keeps jumping.
   void _goToNextMatch() {
-    // If a debounced query is still pending, apply it now so Enter acts on the
-    // exact text the user typed and lands on the first match.
-    if (_searchDebounce?.isActive ?? false) {
-      _searchDebounce!.cancel();
-      setState(() {
-        _searchQuery = _searchController.text;
-        _matchCount = countHighlightMatches(_markdownContent, _searchQuery);
-        _activeMatchIndex = 0;
-      });
-      _searchFocusNode.requestFocus();
-      return;
-    }
+    _flushPendingSearchQuery();
     if (_matchCount == 0) return;
     setState(() {
       _activeMatchIndex = (_activeMatchIndex + 1) % _matchCount;
     });
     _searchFocusNode.requestFocus();
+  }
+
+  void _goToPreviousMatch() {
+    _flushPendingSearchQuery();
+    if (_matchCount == 0) return;
+    setState(() {
+      _activeMatchIndex = (_activeMatchIndex - 1 + _matchCount) % _matchCount;
+    });
+    _searchFocusNode.requestFocus();
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _searchDebounce?.cancel();
+    setState(() {
+      _searchQuery = '';
+      _activeMatchIndex = 0;
+      _matchCount = 0;
+    });
+    _searchFocusNode.requestFocus();
+  }
+
+  void _showSearchPanel() {
+    if (_filePath == null) return;
+    if (!_searchVisible) {
+      setState(() => _searchVisible = true);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  void _toggleSearchPanel() {
+    if (_filePath == null) return;
+    if (_searchVisible) {
+      setState(() => _searchVisible = false);
+      _searchFocusNode.unfocus();
+    } else {
+      _showSearchPanel();
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -301,7 +393,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         ),
         _FocusSearchIntent: CallbackAction<_FocusSearchIntent>(
           onInvoke: (_) {
-            _searchFocusNode.requestFocus();
+            _showSearchPanel();
             return null;
           },
         ),
@@ -353,68 +445,15 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         _filePath != null ? p.basename(_filePath!) : 'VeloxMD',
         style: const TextStyle(fontSize: 16),
       ),
-      bottom: _filePath != null
-          ? PreferredSize(
-              preferredSize: const Size.fromHeight(72),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: TextField(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  onChanged: _onSearchChanged,
-                  onSubmitted: (_) => _goToNextMatch(),
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: 'Search in rendered text',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isEmpty
-                        ? null
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(right: 4),
-                                child: Text(
-                                  _matchCount == 0
-                                      ? 'No results'
-                                      : '${_activeMatchIndex + 1}/$_matchCount',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
-                                      ),
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Clear search',
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _searchDebounce?.cancel();
-                                  setState(() {
-                                    _searchQuery = '';
-                                    _activeMatchIndex = 0;
-                                    _matchCount = 0;
-                                  });
-                                  _searchFocusNode.requestFocus();
-                                },
-                              ),
-                            ],
-                          ),
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-            )
-          : null,
       actions: [
+        if (_filePath != null)
+          IconButton(
+            icon: Icon(_searchVisible ? Icons.search_off : Icons.search),
+            tooltip: _searchVisible
+                ? 'Hide search panel'
+                : 'Show search panel (Ctrl+F)',
+            onPressed: _toggleSearchPanel,
+          ),
         if (_filePath != null)
           IconButton(
             icon: Icon(_tocVisible ? Icons.list_alt : Icons.list),
@@ -542,6 +581,17 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
           TocPanel(
             entries: _tocEntries,
             scrollController: _scrollController,
+          ),
+        if (_searchVisible && _filePath != null)
+          SearchPanel(
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            matchCount: _matchCount,
+            activeMatchIndex: _activeMatchIndex,
+            onChanged: _onSearchChanged,
+            onNext: _goToNextMatch,
+            onPrevious: _goToPreviousMatch,
+            onClear: _clearSearch,
           ),
         Expanded(
           child: MarkdownViewer(

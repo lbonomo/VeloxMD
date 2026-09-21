@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:veloxmd/widgets/markdown_viewer.dart';
+import 'package:veloxmd/widgets/mermaid_view.dart';
 
 void main() {
   testWidgets('highlights search matches without changing their case', (
@@ -301,6 +301,12 @@ void main() {
     expect(zoomed.p?.fontSize, 24);
     expect(normal.h1?.fontSize, 32);
     expect(zoomed.h1?.fontSize, 48);
+    expect(normal.code?.fontSize, 13.5);
+    expect(zoomed.code?.fontSize, 20.25);
+    expect(normal.tableBody?.fontSize, 16);
+    expect(zoomed.tableBody?.fontSize, 24);
+    expect(normal.tableHead?.fontSize, 16);
+    expect(zoomed.tableHead?.fontSize, 24);
   });
 
   testWidgets('renders plain fenced code blocks', (
@@ -327,7 +333,14 @@ void main() {}
 
     await tester.pump();
 
-    expect(find.byType(HighlightView), findsOneWidget);
+    expect(find.byType(SelectableHighlightView), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(SelectionArea),
+        matching: find.byType(SelectableHighlightView),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.byWidgetPredicate(
         (widget) =>
@@ -366,7 +379,7 @@ SELECT 1;
 
     await tester.pump();
 
-    expect(find.byType(HighlightView), findsNWidgets(2));
+    expect(find.byType(SelectableHighlightView), findsNWidgets(2));
     expect(
       find.byWidgetPredicate(
         (widget) =>
@@ -375,5 +388,103 @@ SELECT 1;
       ),
       findsWidgets,
     );
+  });
+
+  testWidgets('fenced code blocks scale font size with fontScale', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownViewer(
+            content: '''
+```dart
+void main() {}
+```
+''',
+            scrollController: controller,
+            basePath: '.',
+            fontScale: 2.0,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    final highlightView = tester.widget<SelectableHighlightView>(find.byType(SelectableHighlightView));
+    expect(highlightView.textStyle?.fontSize, 27.0);
+  });
+
+  testWidgets('renders mermaid diagram blocks with selectable code block', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownViewer(
+            content: '''
+```mermaid
+graph TD
+  A --> B
+```
+''',
+            scrollController: controller,
+            basePath: '.',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.byType(MermaidView), findsOneWidget);
+    expect(find.byType(SelectableHighlightView), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(SelectionArea),
+        matching: find.byType(SelectableHighlightView),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('renders copy button on code block and updates icon on click', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownViewer(
+            content: '''
+```dart
+print("Hello World");
+```
+''',
+            scrollController: controller,
+            basePath: '.',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    final copyButtonFinder = find.byIcon(Icons.copy);
+    expect(copyButtonFinder, findsOneWidget);
+
+    final tooltipFinder = find.byWidgetPredicate(
+      (widget) => widget is Tooltip && widget.message == 'Copy to clipboard',
+    );
+    expect(tooltipFinder, findsOneWidget);
   });
 }

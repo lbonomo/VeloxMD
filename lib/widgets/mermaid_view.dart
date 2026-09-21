@@ -34,6 +34,12 @@ class MermaidRuntime {
 
   static Future<void>? _initFuture;
   static Future<Directory>? _dirFuture;
+  static bool _webviewEnabled = true;
+
+  static bool get webviewEnabled => _webviewEnabled;
+  static void disableWebview() {
+    _webviewEnabled = false;
+  }
 
   /// Initialises the CEF manager exactly once for the whole app.
   static Future<void> ensureInitialized() {
@@ -195,7 +201,11 @@ class MermaidRuntime {
   stage.addEventListener('dblclick', function () { fit(); });
   window.addEventListener('resize', function () { fit(); });
   try {
-    mermaid.initialize({ startOnLoad: false, theme: $themeJson, securityLevel: 'strict' });
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: $themeJson,
+      securityLevel: 'strict'
+    });
     mermaid.render('vmd', $codeJson).then(function (res) {
       document.getElementById('c').innerHTML = res.svg;
       requestAnimationFrame(function () { requestAnimationFrame(fit); });
@@ -256,7 +266,11 @@ class MermaidRuntime {
     requestAnimationFrame(report);
   }
   try {
-    mermaid.initialize({ startOnLoad: false, theme: $themeJson, securityLevel: 'strict' });
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: $themeJson,
+      securityLevel: 'strict'
+    });
     mermaid.render('vmd', $codeJson).then(function (res) {
       document.getElementById('c').innerHTML = res.svg;
       requestAnimationFrame(function () { requestAnimationFrame(report); });
@@ -287,12 +301,14 @@ class MermaidView extends StatefulWidget {
     required this.backgroundColor,
     required this.foregroundColor,
     required this.codeFontFamily,
+    required this.fontScale,
   });
 
   final String code;
   final bool isDark;
   final Color backgroundColor;
   final Color foregroundColor;
+  final double fontScale;
 
   /// Font used when falling back to showing the raw diagram source (CEF
   /// unavailable), e.g. the desktop's detected monospace font.
@@ -309,14 +325,19 @@ class _MermaidViewState extends State<MermaidView> {
   // diagram still gets a usable, mostly-scroll-free box.
   static const double _initialHeight = 500;
 
-  late final WebViewController _controller;
+  WebViewController? _controller;
   double _height = _initialHeight;
   bool _failed = false;
   bool _disposed = false;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
+    if (!MermaidRuntime.webviewEnabled) {
+      _failed = true;
+      return;
+    }
     _controller = WebviewManager().createWebView(
       // NOTE: webview_cef 0.5.1 stores this in a non-nullable map even though
       // the parameter is nullable, so passing null crashes in createWebView.
@@ -345,11 +366,13 @@ class _MermaidViewState extends State<MermaidView> {
         backgroundHex: _hex(widget.backgroundColor),
         foregroundHex: _hex(widget.foregroundColor),
       );
-      _controller.setWebviewListener(
+      _controller!.setWebviewListener(
         WebviewEventsListener(onLoadEnd: (_, __) => _pollHeight()),
       );
-      await _controller.initialize(url);
+      await _controller!.initialize(url);
+      _initialized = true;
     } catch (e) {
+      MermaidRuntime.disableWebview();
       if (mounted) setState(() => _failed = true);
     }
   }
@@ -357,12 +380,12 @@ class _MermaidViewState extends State<MermaidView> {
   Future<void> _pollHeight() async {
     var lastValue = 0.0;
     var stableCount = 0;
-    for (var i = 0; i < 100 && !_disposed; i++) {
+    for (var i = 0; i < 40 && !_disposed; i++) {
       try {
         // Recompute the height live each poll: report() re-measures against
         // the current (final) layout, so a diagram whose first measurement
         // landed too early is not frozen at a too-small, overflowing size.
-        final raw = await _controller.evaluateJavascript(
+        final raw = await _controller!.evaluateJavascript(
           'typeof report === "function" ? report() : window.__mermaidHeight',
         );
         final value = double.tryParse(
@@ -377,7 +400,7 @@ class _MermaidViewState extends State<MermaidView> {
           // Stop once the measurement holds steady across a few reads, so
           // late layout/font settling can still grow the view.
           if ((value - lastValue).abs() <= 0.5) {
-            if (++stableCount >= 3) return;
+            if (++stableCount >= 2) return;
           } else {
             stableCount = 0;
             lastValue = value;
@@ -386,7 +409,8 @@ class _MermaidViewState extends State<MermaidView> {
       } catch (_) {
         // View not ready yet; keep polling.
       }
-      await Future.delayed(const Duration(milliseconds: 100));
+      final delayMs = i < 10 ? 50 : 100;
+      await Future.delayed(Duration(milliseconds: delayMs));
     }
   }
 
@@ -404,6 +428,8 @@ class _MermaidViewState extends State<MermaidView> {
           isDark: widget.isDark,
           backgroundColor: widget.backgroundColor,
           foregroundColor: widget.foregroundColor,
+          fontScale: widget.fontScale,
+          codeFontFamily: widget.codeFontFamily,
         ),
       ),
     );
@@ -412,50 +438,68 @@ class _MermaidViewState extends State<MermaidView> {
   @override
   void dispose() {
     _disposed = true;
-    _controller.dispose();
+    if (_initialized) {
+      try {
+        _controller?.dispose();
+      } catch (_) {}
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_failed) {
+    if (_failed || _controller == null) {
       return _RawFallback(
         code: widget.code,
         foregroundColor: widget.foregroundColor,
         codeFontFamily: widget.codeFontFamily,
+        fontScale: widget.fontScale,
       );
     }
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final diagramScale = widget.fontScale.clamp(0.5, 3.0).toDouble();
+        final intrinsicWidth =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : null;
         return SizedBox(
-          width: constraints.maxWidth.isFinite ? constraints.maxWidth : null,
-          height: _height,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ValueListenableBuilder<bool>(
-                valueListenable: _controller,
-                builder: (_, ready, __) => ready
-                    ? _controller.webviewWidget
-                    : _controller.loadingWidget,
-              ),
-              // The webview consumes pointer events, so a transparent overlay
-              // on top captures the tap to open the full-screen view.
-              Positioned.fill(
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _openFullscreen,
-                    child: const Tooltip(
-                      message: 'Click to view full screen',
-                      child: SizedBox.expand(),
+          width: intrinsicWidth,
+          height: _height * diagramScale,
+          child: ClipRect(
+            child: Transform.scale(
+              scale: diagramScale,
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: intrinsicWidth,
+                height: _height,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _controller!,
+                      builder: (_, ready, __) => ready
+                          ? _controller!.webviewWidget
+                          : _controller!.loadingWidget,
                     ),
-                  ),
+                    // The webview consumes pointer events, so a transparent overlay
+                    // on top captures the tap to open the full-screen view.
+                    Positioned.fill(
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _openFullscreen,
+                          child: const Tooltip(
+                            message: 'Click to view full screen',
+                            child: SizedBox.expand(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         );
       },
@@ -471,24 +515,32 @@ class MermaidFullScreenPage extends StatefulWidget {
     required this.isDark,
     required this.backgroundColor,
     required this.foregroundColor,
+    required this.codeFontFamily,
+    required this.fontScale,
   });
 
   final String code;
   final bool isDark;
   final Color backgroundColor;
   final Color foregroundColor;
+  final String codeFontFamily;
+  final double fontScale;
 
   @override
   State<MermaidFullScreenPage> createState() => _MermaidFullScreenPageState();
 }
 
 class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _failed = false;
 
   @override
   void initState() {
     super.initState();
+    if (!MermaidRuntime.webviewEnabled) {
+      _failed = true;
+      return;
+    }
     _controller = WebviewManager().createWebView(
       injectUserScripts: InjectUserScripts(),
       loading: const Center(child: CircularProgressIndicator()),
@@ -506,15 +558,18 @@ class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
         foregroundHex: _MermaidViewState._hex(widget.foregroundColor),
         fitViewport: true,
       );
-      await _controller.initialize(url);
+      await _controller!.initialize(url);
     } catch (_) {
+      MermaidRuntime.disableWebview();
       if (mounted) setState(() => _failed = true);
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    try {
+      _controller?.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -532,17 +587,18 @@ class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
           body: Stack(
             children: [
               Positioned.fill(
-                child: _failed
+                child: _failed || _controller == null
                     ? _RawFallback(
                         code: widget.code,
                         foregroundColor: widget.foregroundColor,
-                        codeFontFamily: widget.codeFontFamily,
+                                      fontScale: widget.fontScale,
+                                      codeFontFamily: widget.codeFontFamily,
                       )
                     : ValueListenableBuilder<bool>(
-                        valueListenable: _controller,
+                        valueListenable: _controller!,
                         builder: (_, ready, __) => ready
-                            ? _controller.webviewWidget
-                            : _controller.loadingWidget,
+                            ? _controller!.webviewWidget
+                            : _controller!.loadingWidget,
                       ),
               ),
               Positioned(
@@ -572,11 +628,13 @@ class _RawFallback extends StatelessWidget {
     required this.code,
     required this.foregroundColor,
     required this.codeFontFamily,
+    required this.fontScale,
   });
 
   final String code;
   final Color foregroundColor;
   final String codeFontFamily;
+  final double fontScale;
 
   @override
   Widget build(BuildContext context) {
@@ -602,7 +660,10 @@ class _RawFallback extends StatelessWidget {
           const SizedBox(height: 8),
           SelectableText(
             code,
-            style: TextStyle(fontFamily: codeFontFamily, fontSize: 13.5)
+            style: TextStyle(
+              fontFamily: codeFontFamily,
+              fontSize: 13.5 * fontScale,
+            )
                 .copyWith(color: foregroundColor),
           ),
         ],
