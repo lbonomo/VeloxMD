@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.9 - 2026-09-22
+
+### 🐛 Bug Fixes
+- **Large Markdown Rendering & Freeze Fix**:
+  - Replaced non-lazy `MarkdownBody` with virtualized `Markdown` (`ListView.builder`) in `MarkdownViewer` to render Markdown documents lazily and eliminate main UI thread hangs on large files.
+  - Fixed `Isolate.run` error handling in `ViewerScreen` for large documents (>20,000 chars) to prevent unhandled isolate exception crashes from leaving the UI stuck on loading spinner.
+
 ## 1.0.8 - 2026-09-21
 
 ### ✨ Features
