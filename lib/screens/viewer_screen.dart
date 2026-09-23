@@ -201,12 +201,10 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
       final content = await FileService.readMarkdown(path);
       _watchFile(path);
 
-      final statsFuture = content.length > 20000
-          ? Isolate.run(() => DocumentStats.fromMarkdown(content))
-          : Future.value(DocumentStats.fromMarkdown(content));
-      final tocFuture = content.length > 20000
-          ? Isolate.run(() => TocEntry.fromMarkdown(content))
-          : Future.value(TocEntry.fromMarkdown(content));
+      final statsFuture =
+          Future.microtask(() => DocumentStats.fromMarkdown(content));
+      final tocFuture =
+          Future.microtask(() => TocEntry.fromMarkdown(content));
 
       final stats = await statsFuture;
       final tocEntries = await tocFuture;
@@ -222,11 +220,12 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         _recomputeMatchCount();
       });
       await windowManager.setTitle(p.basename(path));
-    } on FileServiceException catch (e) {
+    } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = e.message;
+          _errorMessage =
+              e is FileServiceException ? e.message : 'Error opening file: $e';
         });
       }
     }
@@ -243,12 +242,10 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
     if (_filePath == null) return;
     try {
       final content = await FileService.readMarkdown(_filePath!);
-      final statsFuture = content.length > 20000
-          ? Isolate.run(() => DocumentStats.fromMarkdown(content))
-          : Future.value(DocumentStats.fromMarkdown(content));
-      final tocFuture = content.length > 20000
-          ? Isolate.run(() => TocEntry.fromMarkdown(content))
-          : Future.value(TocEntry.fromMarkdown(content));
+      final statsFuture =
+          Future.microtask(() => DocumentStats.fromMarkdown(content));
+      final tocFuture =
+          Future.microtask(() => TocEntry.fromMarkdown(content));
 
       final stats = await statsFuture;
       final tocEntries = await tocFuture;
@@ -708,4 +705,11 @@ class _ResetFontSizeIntent extends Intent {
 class _ToggleViewSourceIntent extends Intent {
   const _ToggleViewSourceIntent();
 }
+
+DocumentStats computeDocumentStats(String content) =>
+    DocumentStats.fromMarkdown(content);
+
+List<TocEntry> computeTocEntries(String content) =>
+    TocEntry.fromMarkdown(content);
+
 

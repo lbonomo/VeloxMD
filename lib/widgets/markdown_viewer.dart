@@ -508,56 +508,49 @@ class MarkdownViewer extends StatelessWidget {
         ? theme.colorScheme.surfaceContainerHighest
         : const Color(0xFFF6F8FA);
 
-    return Scrollbar(
+    return Markdown(
+      key: ValueKey<String>(searchQuery.trim()),
       controller: scrollController,
-      child: SingleChildScrollView(
-        controller: scrollController,
-        padding: EdgeInsets.symmetric(
-          horizontal: horizontalPadding,
-          vertical: 24,
-        ),
-        child: MarkdownBody(
-          key: ValueKey<String>(searchQuery.trim()),
-          data: content,
-          selectable: true,
-          shrinkWrap: true,
-          fitContent: false,
-          imageDirectory: basePath,
-          extensionSet: buildMarkdownExtensionSet(query),
-          builders: <String, MarkdownElementBuilder>{
-            'codeblock': _CodeBlockBuilder(
-              isDark: isDark,
-              codeBackground: codeBackground,
-              codeForeground: theme.colorScheme.onSurface,
-              codeFontFamily: codeFontFamily ?? 'monospace',
-              fontScale: fontScale,
-            ),
-            'mermaid': _MermaidBlockBuilder(
-              isDark: isDark,
-              codeBackground: codeBackground,
-              codeForeground: theme.colorScheme.onSurface,
-              codeFontFamily: codeFontFamily ?? 'monospace',
-              fontScale: fontScale,
-            ),
-            if (query.isNotEmpty)
-              _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
-                backgroundColor: matchBackgroundColor,
-                activeBackgroundColor: activeMatchBackgroundColor,
-                foregroundColor: matchForegroundColor,
-                activeMatchIndex: activeMatchIndex,
-                scrollController: scrollController,
-              ),
-          },
-          onTapLink: (text, href, title) async {
-            if (href == null) return;
-            final uri = Uri.tryParse(href);
-            if (uri != null && await canLaunchUrl(uri)) {
-              await launchUrl(uri);
-            }
-          },
-          styleSheet: _buildStyleSheet(context, isDark),
-        ),
+      data: content,
+      selectable: true,
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: 24,
       ),
+      imageDirectory: basePath,
+      extensionSet: buildMarkdownExtensionSet(query),
+      builders: <String, MarkdownElementBuilder>{
+        'codeblock': _CodeBlockBuilder(
+          isDark: isDark,
+          codeBackground: codeBackground,
+          codeForeground: theme.colorScheme.onSurface,
+          codeFontFamily: codeFontFamily ?? 'monospace',
+          fontScale: fontScale,
+        ),
+        'mermaid': _MermaidBlockBuilder(
+          isDark: isDark,
+          codeBackground: codeBackground,
+          codeForeground: theme.colorScheme.onSurface,
+          codeFontFamily: codeFontFamily ?? 'monospace',
+          fontScale: fontScale,
+        ),
+        if (query.isNotEmpty)
+          _SearchHighlightSyntax.tag: _SearchHighlightBuilder(
+            backgroundColor: matchBackgroundColor,
+            activeBackgroundColor: activeMatchBackgroundColor,
+            foregroundColor: matchForegroundColor,
+            activeMatchIndex: activeMatchIndex,
+            scrollController: scrollController,
+          ),
+      },
+      onTapLink: (text, href, title) async {
+        if (href == null) return;
+        final uri = Uri.tryParse(href);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        }
+      },
+      styleSheet: _buildStyleSheet(context, isDark),
     );
   }
 
