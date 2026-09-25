@@ -82,6 +82,7 @@ class PdfExportService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: pageFormat,
+        maxPages: 1000,
         margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 40),
         header: (context) {
           if (title == null || title.isEmpty || context.pageNumber == 1) {
@@ -187,35 +188,36 @@ class _MarkdownToPdfConverter {
   static const _linkBlue = PdfColor.fromInt(0xFF0969DA);
   static const _blockquoteBorder = PdfColor.fromInt(0xFF0969DA);
   static const _codeInlineColor = PdfColor.fromInt(0xFFBF3989);
+  static const int _maxCodeLinesPerChunk = 20;
 
   Future<List<pw.Widget>> convertNodes(List<md.Node> nodes) async {
     final widgets = <pw.Widget>[];
     for (final node in nodes) {
       final converted = await _convertBlockNode(node);
-      if (converted != null) {
-        widgets.add(converted);
-      }
+      widgets.addAll(converted);
     }
     return widgets;
   }
 
-  Future<pw.Widget?> _convertBlockNode(md.Node node) async {
+  Future<List<pw.Widget>> _convertBlockNode(md.Node node) async {
     if (node is! md.Element) {
       if (node is md.Text && node.text.trim().isNotEmpty) {
-        return pw.Padding(
-          padding: const pw.EdgeInsets.only(bottom: 6),
-          child: pw.Text(
-            node.text,
-            style: pw.TextStyle(
-              font: fonts.regular,
-              fontSize: 10.5,
-              color: _textPrimary,
-              lineSpacing: 1.4,
+        return [
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 6),
+            child: pw.Text(
+              node.text,
+              style: pw.TextStyle(
+                font: fonts.regular,
+                fontSize: 10.5,
+                color: _textPrimary,
+                lineSpacing: 1.4,
+              ),
             ),
           ),
-        );
+        ];
       }
-      return null;
+      return const [];
     }
 
     switch (node.tag) {
@@ -233,16 +235,16 @@ class _MarkdownToPdfConverter {
         return _buildHeading(node, fontSize: 9.5, topMargin: 8, bottomMargin: 4, isMuted: true);
 
       case 'p':
-        return _buildParagraph(node);
+        return await _buildParagraph(node);
 
       case 'blockquote':
-        return _buildBlockquote(node);
+        return await _buildBlockquote(node);
 
       case 'ul':
-        return _buildList(node, ordered: false);
+        return await _buildList(node, ordered: false);
 
       case 'ol':
-        return _buildList(node, ordered: true);
+        return await _buildList(node, ordered: true);
 
       case 'pre':
         return _buildCodeBlock(node);
@@ -251,30 +253,28 @@ class _MarkdownToPdfConverter {
         return _buildTable(node);
 
       case 'hr':
-        return pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(vertical: 10),
-          child: pw.Divider(color: _codeBorder, thickness: 0.8),
-        );
+        return [
+          pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(vertical: 10),
+            child: pw.Divider(color: _codeBorder, thickness: 0.8),
+          ),
+        ];
 
       case 'img':
-        return _buildImageElement(node);
+        final img = await _buildImageElement(node);
+        return img != null ? [img] : const [];
 
       default:
         // Handle custom or unrecognised container elements by processing their children
-        if (node.children != null && node.children!.isNotEmpty) {
-          final childrenWidgets = await convertNodes(node.children!);
-          if (childrenWidgets.isNotEmpty) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: childrenWidgets,
-            );
-          }
+        final children = node.children;
+        if (children != null && children.isNotEmpty) {
+          return await convertNodes(children);
         }
-        return null;
+        return const [];
     }
   }
 
-  pw.Widget _buildHeading(
+  List<pw.Widget> _buildHeading(
     md.Element element, {
     required double fontSize,
     required double topMargin,
@@ -297,96 +297,105 @@ class _MarkdownToPdfConverter {
     );
 
     if (hasDivider) {
-      return pw.Padding(
-        padding: pw.EdgeInsets.only(top: topMargin, bottom: bottomMargin),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            headingWidget,
-            pw.SizedBox(height: 4),
-            pw.Divider(color: _codeBorder, thickness: 0.5),
-          ],
+      return [
+        pw.Padding(
+          padding: pw.EdgeInsets.only(top: topMargin, bottom: 4),
+          child: headingWidget,
         ),
-      );
+        pw.Padding(
+          padding: pw.EdgeInsets.only(bottom: bottomMargin),
+          child: pw.Divider(color: _codeBorder, thickness: 0.5),
+        ),
+      ];
     }
 
-    return pw.Padding(
-      padding: pw.EdgeInsets.only(top: topMargin, bottom: bottomMargin),
-      child: headingWidget,
-    );
+    return [
+      pw.Padding(
+        padding: pw.EdgeInsets.only(top: topMargin, bottom: bottomMargin),
+        child: headingWidget,
+      ),
+    ];
   }
 
-  Future<pw.Widget> _buildParagraph(md.Element element) async {
+  Future<List<pw.Widget>> _buildParagraph(md.Element element) async {
+    final children = element.children;
     // Check if the paragraph contains only an image
-    if (element.children != null &&
-        element.children!.length == 1 &&
-        element.children!.first is md.Element &&
-        (element.children!.first as md.Element).tag == 'img') {
-      final imgWidget = await _buildImageElement(element.children!.first as md.Element);
-      if (imgWidget != null) return imgWidget;
+    if (children != null &&
+        children.length == 1 &&
+        children.first is md.Element &&
+        (children.first as md.Element).tag == 'img') {
+      final imgWidget = await _buildImageElement(children.first as md.Element);
+      if (imgWidget != null) return [imgWidget];
     }
 
-    final spans = _convertInlineNodes(element.children ?? []);
-    return pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 8),
-      child: pw.RichText(
-        text: pw.TextSpan(
-          children: spans.isEmpty
-              ? [pw.TextSpan(text: element.textContent)]
-              : spans,
-          style: pw.TextStyle(
-            font: fonts.regular,
-            fontSize: 10.5,
-            color: _textPrimary,
-            lineSpacing: 1.4,
+    final spans = _convertInlineNodes(children ?? []);
+    return [
+      pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 8),
+        child: pw.RichText(
+          text: pw.TextSpan(
+            children: spans.isEmpty
+                ? [pw.TextSpan(text: element.textContent)]
+                : spans,
+            style: pw.TextStyle(
+              font: fonts.regular,
+              fontSize: 10.5,
+              color: _textPrimary,
+              lineSpacing: 1.4,
+            ),
           ),
         ),
       ),
-    );
+    ];
   }
 
-  Future<pw.Widget> _buildBlockquote(md.Element element) async {
+  Future<List<pw.Widget>> _buildBlockquote(md.Element element) async {
     final innerWidgets = await convertNodes(element.children ?? []);
-    return pw.Container(
-      margin: const pw.EdgeInsets.symmetric(vertical: 6),
-      padding: const pw.EdgeInsets.fromLTRB(12, 6, 8, 6),
-      decoration: const pw.BoxDecoration(
-        color: _codeBg,
-        border: pw.Border(
-          left: pw.BorderSide(color: _blockquoteBorder, width: 3.5),
+    if (innerWidgets.isEmpty) return const [];
+
+    return innerWidgets.map((w) {
+      return pw.Container(
+        margin: const pw.EdgeInsets.symmetric(vertical: 2),
+        padding: const pw.EdgeInsets.fromLTRB(12, 4, 8, 4),
+        decoration: const pw.BoxDecoration(
+          color: _codeBg,
+          border: pw.Border(
+            left: pw.BorderSide(color: _blockquoteBorder, width: 3.5),
+          ),
         ),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: innerWidgets,
-      ),
-    );
+        child: w,
+      );
+    }).toList();
   }
 
-  Future<pw.Widget> _buildList(md.Element element, {required bool ordered}) async {
+  Future<List<pw.Widget>> _buildList(
+    md.Element element, {
+    required bool ordered,
+    int depth = 0,
+  }) async {
     final items = element.children?.whereType<md.Element>().toList() ?? [];
-    final itemWidgets = <pw.Widget>[];
+    final widgets = <pw.Widget>[];
 
     int index = 1;
     for (final item in items) {
       if (item.tag == 'li') {
-        itemWidgets.add(await _buildListItem(item, ordered: ordered, index: index++));
+        widgets.addAll(await _buildListItem(
+          item,
+          ordered: ordered,
+          index: index++,
+          depth: depth,
+        ));
       }
     }
 
-    return pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 6),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: itemWidgets,
-      ),
-    );
+    return widgets;
   }
 
-  Future<pw.Widget> _buildListItem(
+  Future<List<pw.Widget>> _buildListItem(
     md.Element li, {
     required bool ordered,
     required int index,
+    int depth = 0,
   }) async {
     // Check for Task List checkbox (e.g., "- [ ] " or "- [x] ")
     final rawText = li.textContent.trimLeft();
@@ -447,12 +456,16 @@ class _MarkdownToPdfConverter {
     }
 
     // Process children of LI (which may contain text, paragraphs, or nested lists)
-    final nestedBlocks = <pw.Widget>[];
+    final nestedWidgets = <pw.Widget>[];
     final inlineNodes = <md.Node>[];
 
     for (final child in li.children ?? []) {
       if (child is md.Element && (child.tag == 'ul' || child.tag == 'ol')) {
-        nestedBlocks.add(await _buildList(child, ordered: child.tag == 'ol'));
+        nestedWidgets.addAll(await _buildList(
+          child,
+          ordered: child.tag == 'ol',
+          depth: depth + 1,
+        ));
       } else if (child is md.Element && child.tag == 'p') {
         inlineNodes.addAll(child.children ?? []);
       } else {
@@ -491,32 +504,30 @@ class _MarkdownToPdfConverter {
       ),
     );
 
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 2),
-      child: pw.Column(
+    final leftIndent = depth * 16.0;
+
+    final itemRow = pw.Padding(
+      padding: pw.EdgeInsets.only(
+        left: leftIndent,
+        top: 2,
+        bottom: 2,
+      ),
+      child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              markerWidget,
-              pw.Expanded(child: contentWidget),
-            ],
-          ),
-          if (nestedBlocks.isNotEmpty)
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(left: 16, top: 2),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: nestedBlocks,
-              ),
-            ),
+          markerWidget,
+          pw.Expanded(child: contentWidget),
         ],
       ),
     );
+
+    return [
+      itemRow,
+      ...nestedWidgets,
+    ];
   }
 
-  pw.Widget _buildCodeBlock(md.Element element) {
+  List<pw.Widget> _buildCodeBlock(md.Element element) {
     String code = '';
     String? language;
 
@@ -536,63 +547,86 @@ class _MarkdownToPdfConverter {
       code = element.textContent;
     }
 
-    // Check if language is specified or is mermaid
     final isMermaid = language?.toLowerCase() == 'mermaid';
+    final lines = code.trimRight().split('\n');
+    if (lines.isEmpty) return const [];
 
-    return pw.Container(
-      margin: const pw.EdgeInsets.symmetric(vertical: 6),
-      width: double.infinity,
-      decoration: pw.BoxDecoration(
-        color: _codeBg,
-        borderRadius: pw.BorderRadius.circular(4),
-        border: pw.Border.all(color: _codeBorder, width: 0.8),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          if (language != null && language.isNotEmpty)
-            pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: const pw.BoxDecoration(
-                border: pw.Border(
-                  bottom: pw.BorderSide(color: _codeBorder, width: 0.5),
-                ),
-              ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text(
-                    isMermaid ? 'Mermaid Diagram' : language.toUpperCase(),
-                    style: pw.TextStyle(
-                      font: fonts.bold,
-                      fontSize: 7.5,
-                      color: _textMuted,
+    final chunks = <List<String>>[];
+    for (int i = 0; i < lines.length; i += _maxCodeLinesPerChunk) {
+      final end = (i + _maxCodeLinesPerChunk < lines.length)
+          ? i + _maxCodeLinesPerChunk
+          : lines.length;
+      chunks.add(lines.sublist(i, end));
+    }
+
+    final widgets = <pw.Widget>[];
+
+    for (int c = 0; c < chunks.length; c++) {
+      final chunkText = chunks[c].join('\n');
+      final isFirst = (c == 0);
+
+      widgets.add(
+        pw.Container(
+          margin: const pw.EdgeInsets.symmetric(vertical: 3),
+          width: double.infinity,
+          decoration: pw.BoxDecoration(
+            color: _codeBg,
+            borderRadius: pw.BorderRadius.circular(4),
+            border: pw.Border.all(color: _codeBorder, width: 0.8),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              if (language != null && language.isNotEmpty)
+                pw.Container(
+                  padding:
+                      const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(
+                      bottom: pw.BorderSide(color: _codeBorder, width: 0.5),
                     ),
                   ),
-                ],
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        isFirst
+                            ? (isMermaid ? 'Mermaid Diagram' : language.toUpperCase())
+                            : (isMermaid ? 'Mermaid Diagram (cont.)' : '${language.toUpperCase()} (cont.)'),
+                        style: pw.TextStyle(
+                          font: fonts.bold,
+                          fontSize: 7.5,
+                          color: _textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              pw.Padding(
+                padding: const pw.EdgeInsets.all(10),
+                child: pw.Text(
+                  chunkText,
+                  style: pw.TextStyle(
+                    font: fonts.mono,
+                    fontSize: 8.5,
+                    color: _textPrimary,
+                    lineSpacing: 1.3,
+                  ),
+                ),
               ),
-            ),
-          pw.Padding(
-            padding: const pw.EdgeInsets.all(10),
-            child: pw.Text(
-              code.trimRight(),
-              style: pw.TextStyle(
-                font: fonts.mono,
-                fontSize: 8.5,
-                color: _textPrimary,
-                lineSpacing: 1.3,
-              ),
-            ),
+            ],
           ),
-        ],
-      ),
-    );
+        ),
+      );
+    }
+
+    return widgets;
   }
 
-  pw.Widget _buildTable(md.Element tableElement) {
+  List<pw.Widget> _buildTable(md.Element tableElement) {
     final rows = <pw.TableRow>[];
     final tableChildren = tableElement.children;
-    if (tableChildren == null) return pw.SizedBox.shrink();
+    if (tableChildren == null) return const [];
 
     for (final section in tableChildren) {
       if (section is! md.Element) continue;
@@ -704,15 +738,16 @@ class _MarkdownToPdfConverter {
       }
     }
 
-    if (rows.isEmpty) return pw.SizedBox.shrink();
+    if (rows.isEmpty) return const [];
 
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 8),
-      child: pw.Table(
+    return [
+      pw.SizedBox(height: 6),
+      pw.Table(
         border: pw.TableBorder.all(color: _codeBorder, width: 0.6),
         children: rows,
       ),
-    );
+      pw.SizedBox(height: 6),
+    ];
   }
 
   pw.Alignment _parseAlignment(String? align) {
