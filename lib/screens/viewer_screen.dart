@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:path/path.dart' as p;
 import '../widgets/markdown_viewer.dart';
 import '../widgets/source_viewer.dart';
@@ -19,6 +19,7 @@ import '../models/document_stats.dart';
 import '../services/file_service.dart';
 import '../services/font_service.dart';
 import '../services/keybindings_service.dart';
+import '../services/pdf_export_service.dart';
 
 class ViewerScreen extends StatefulWidget {
   const ViewerScreen({
@@ -64,6 +65,7 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
   int _matchCount = 0;
   StreamSubscription<FileSystemEvent>? _fileWatchSub;
   bool _isPickerOpen = false;
+  bool _isExportingPdf = false;
 
   /// Debounced search query actually applied to the rendered view and the match
   /// count. Typing updates the text field immediately, but re-parsing/rendering
@@ -219,7 +221,9 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         _tocEntries = tocEntries;
         _recomputeMatchCount();
       });
-      await windowManager.setTitle(p.basename(path));
+      try {
+        await windowManager.setTitle(p.basename(path));
+      } catch (_) {}
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -260,6 +264,102 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
       });
     } catch (_) {
       // Silently ignore reload errors
+    }
+  }
+
+  Future<void> _exportToPdf() async {
+    if (_filePath == null || _markdownContent.isEmpty || _isExportingPdf) {
+      return;
+    }
+
+    setState(() => _isExportingPdf = true);
+
+    try {
+      final baseName = p.basenameWithoutExtension(_filePath!);
+      final defaultFileName = '$baseName.pdf';
+      String? savePath;
+
+      if (Platform.isLinux) {
+        try {
+          const channel = MethodChannel('com.veloxmd/file_picker');
+          savePath = await channel.invokeMethod<String>('saveFile', {
+            'fileName': defaultFileName,
+            'dialogTitle': 'Export to PDF',
+          });
+        } on MissingPluginException {
+          savePath = null;
+        } catch (_) {
+          savePath = null;
+        }
+      }
+
+      if (savePath == null) {
+        final bool wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
+        if (wasAlwaysOnTop) {
+          await windowManager.setAlwaysOnTop(false);
+        }
+        try {
+          savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'Export to PDF',
+            fileName: defaultFileName,
+            type: FileType.custom,
+            allowedExtensions: ['pdf'],
+            lockParentWindow: true,
+          );
+        } finally {
+          if (wasAlwaysOnTop) {
+            await windowManager.setAlwaysOnTop(true);
+          }
+          await windowManager.focus();
+        }
+      }
+
+      if (savePath == null || !mounted) return;
+
+      if (!savePath.toLowerCase().endsWith('.pdf')) {
+        savePath = '$savePath.pdf';
+      }
+
+      await PdfExportService.exportToFile(
+        markdown: _markdownContent,
+        outputPath: savePath,
+        title: p.basename(_filePath!),
+        basePath: p.dirname(_filePath!),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Exported to ${p.basename(savePath)}'),
+          action: SnackBarAction(
+            label: 'Open',
+            onPressed: () async {
+              final uri = Uri.file(savePath!);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+            },
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to export PDF: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExportingPdf = false);
+      }
     }
   }
 
@@ -380,6 +480,8 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
           a: const _DecreaseFontSizeIntent(),
         for (final a in widget.keybindings[KeyAction.resetFontSize])
           a: const _ResetFontSizeIntent(),
+        for (final a in widget.keybindings[KeyAction.exportPdf])
+          a: const _ExportPdfIntent(),
       };
 
   Map<Type, Action<Intent>> get _actions => {
@@ -409,6 +511,9 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
         ),
         _ResetFontSizeIntent: CallbackAction<_ResetFontSizeIntent>(
           onInvoke: (_) => _setFontScale(1.0),
+        ),
+        _ExportPdfIntent: CallbackAction<_ExportPdfIntent>(
+          onInvoke: (_) => _exportToPdf(),
         ),
       };
 
@@ -474,6 +579,20 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
             onPressed: () => setState(() => _showSource = !_showSource),
           ),
         if (_filePath != null) _buildMarginControl(context),
+        if (_filePath != null)
+          IconButton(
+            icon: _isExportingPdf
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.picture_as_pdf),
+            tooltip: _isExportingPdf
+                ? 'Exporting to PDF...'
+                : 'Export to PDF (${widget.keybindings.label(KeyAction.exportPdf)})',
+            onPressed: _isExportingPdf ? null : _exportToPdf,
+          ),
         IconButton(
           icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
           tooltip: 'Toggle theme',
@@ -704,6 +823,10 @@ class _ResetFontSizeIntent extends Intent {
 
 class _ToggleViewSourceIntent extends Intent {
   const _ToggleViewSourceIntent();
+}
+
+class _ExportPdfIntent extends Intent {
+  const _ExportPdfIntent();
 }
 
 DocumentStats computeDocumentStats(String content) =>
