@@ -51,6 +51,44 @@ static void native_file_picker_method_call_cb(FlMethodChannel* channel,
                              nullptr);
     }
     g_object_unref(native_chooser);
+  } else if (g_strcmp0(method, "saveFile") == 0) {
+    GtkFileChooserNative* native_chooser = gtk_file_chooser_native_new(
+        "Export to PDF",
+        window,
+        GTK_FILE_CHOOSER_ACTION_SAVE,
+        "_Save",
+        "_Cancel");
+    gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(native_chooser), TRUE);
+
+    FlValue* args = fl_method_call_get_args(method_call);
+    if (args != nullptr && fl_value_get_type(args) == FL_VALUE_TYPE_MAP) {
+      FlValue* name_val = fl_value_lookup_string(args, "fileName");
+      if (name_val != nullptr && fl_value_get_type(name_val) == FL_VALUE_TYPE_STRING) {
+        gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(native_chooser), fl_value_get_string(name_val));
+      }
+    } else if (args != nullptr && fl_value_get_type(args) == FL_VALUE_TYPE_STRING) {
+      gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(native_chooser), fl_value_get_string(args));
+    }
+
+    GtkFileFilter* filter = gtk_file_filter_new();
+    gtk_file_filter_set_name(filter, "PDF files (*.pdf)");
+    gtk_file_filter_add_pattern(filter, "*.pdf");
+    gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(native_chooser), filter);
+
+    gint res = gtk_native_dialog_run(GTK_NATIVE_DIALOG(native_chooser));
+    if (res == GTK_RESPONSE_ACCEPT) {
+      char* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(native_chooser));
+      g_autoptr(FlValue) result = fl_value_new_string(filename);
+      g_free(filename);
+      fl_method_call_respond(method_call,
+                             FL_METHOD_RESPONSE(fl_method_success_response_new(result)),
+                             nullptr);
+    } else {
+      fl_method_call_respond(method_call,
+                             FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr)),
+                             nullptr);
+    }
+    g_object_unref(native_chooser);
   } else {
     fl_method_call_respond(method_call,
                            FL_METHOD_RESPONSE(fl_method_not_implemented_response_new()),

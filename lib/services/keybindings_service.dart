@@ -24,6 +24,7 @@ enum KeyAction {
   increaseFontSize('increase_font_size'),
   decreaseFontSize('decrease_font_size'),
   resetFontSize('reset_font_size'),
+  exportPdf('export_pdf'),
   quit('quit');
 
   const KeyAction(this.configKey);
@@ -51,6 +52,7 @@ class KeybindingsService {
     KeyAction.increaseFontSize: ['ctrl+plus'],
     KeyAction.decreaseFontSize: ['ctrl+minus'],
     KeyAction.resetFontSize: ['ctrl+zero'],
+    KeyAction.exportPdf: ['ctrl+p', 'ctrl+e'],
     KeyAction.quit: ['ctrl+q'],
   };
 

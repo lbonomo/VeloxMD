@@ -666,7 +666,7 @@ class _MermaidFenceSyntax extends md.BlockSyntax {
       indent,
     );
 
-    var text = childLines.map((line) => line!.content).join('\n');
+    var text = childLines.map((line) => line.content).join('\n');
     if (text.isNotEmpty) {
       text = '$text\n';
     }
@@ -710,7 +710,7 @@ class _CodeFenceSyntax extends md.BlockSyntax {
       indent,
     );
 
-    var text = childLines.map((e) => e!.content).join('\n');
+    final text = childLines.map((e) => e.content).join('\n');
     final element = md.Element.empty('codeblock');
     element.attributes['content'] = text;
     final info = (openingFence.namedGroup('backtickInfo') ??
