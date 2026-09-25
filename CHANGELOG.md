@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.10 - 2026-09-25
+
+### ✨ Features
+- **Export to PDF**:
+  - Added an Export to PDF button in the toolbar and `Ctrl+P` / `Ctrl+E` keyboard shortcuts to export the rendered Markdown document as a beautifully formatted PDF.
+  - Full support for multi-page pagination across large code blocks, lists, blockquotes, and tables without height overflows.
+  - Includes document title header, page numbers, and clickable repository link in the footer.
+
 ## 1.0.9 - 2026-09-22
 
 ### 🐛 Bug Fixes
