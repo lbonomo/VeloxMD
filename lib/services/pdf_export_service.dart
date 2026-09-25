@@ -120,12 +120,15 @@ class PdfExportService {
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text(
-                  'Generated with VeloxMD',
-                  style: pw.TextStyle(
-                    font: fonts.regular,
-                    fontSize: 8,
-                    color: PdfColors.grey500,
+                pw.UrlLink(
+                  destination: 'https://github.com/lbonomo/VeloxMD',
+                  child: pw.Text(
+                    'Generated with VeloxMD',
+                    style: pw.TextStyle(
+                      font: fonts.regular,
+                      fontSize: 8,
+                      color: PdfColors.grey600,
+                    ),
                   ),
                 ),
                 pw.Text(
