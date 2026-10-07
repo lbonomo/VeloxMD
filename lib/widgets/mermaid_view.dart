@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle, LogicalKeyboardKey;
 import 'package:webview_cef/webview_cef.dart';
+import 'package:window_manager/window_manager.dart';
 
 /// Decodes the HTML entities that the Markdown parser injects into fenced
 /// code content (e.g. `--&gt;` back to `-->`). Mermaid needs the raw source,
@@ -200,6 +202,48 @@ class MermaidRuntime {
   });
   stage.addEventListener('dblclick', function () { fit(); });
   window.addEventListener('resize', function () { fit(); });
+  window.__mermaidPng = null;
+  function updatePng() {
+    var svg = document.querySelector('#c svg');
+    if (!svg) return;
+    var nw = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width ? svg.viewBox.baseVal.width : 0;
+    var nh = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.height ? svg.viewBox.baseVal.height : 0;
+    if (!nw || !nh) {
+      try { var b = svg.getBBox(); nw = b.width; nh = b.height; } catch (e) {}
+    }
+    if (!nw || !nh) {
+      var r = svg.getBoundingClientRect();
+      nw = r.width; nh = r.height;
+    }
+    if (!nw || !nh) return;
+    var scale = 2;
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(nw * scale);
+    canvas.height = Math.ceil(nh * scale);
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '$backgroundHex';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    var clone = svg.cloneNode(true);
+    clone.setAttribute('width', nw);
+    clone.setAttribute('height', nh);
+    clone.style.maxWidth = 'none';
+    clone.style.maxHeight = 'none';
+    clone.style.width = nw + 'px';
+    clone.style.height = nh + 'px';
+    var xml = new XMLSerializer().serializeToString(clone);
+    var blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var img = new Image();
+    img.onload = function() {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      window.__mermaidPng = canvas.toDataURL('image/png');
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
   try {
     mermaid.initialize({
       startOnLoad: false,
@@ -208,7 +252,12 @@ class MermaidRuntime {
     });
     mermaid.render('vmd', $codeJson).then(function (res) {
       document.getElementById('c').innerHTML = res.svg;
-      requestAnimationFrame(function () { requestAnimationFrame(fit); });
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          fit();
+          updatePng();
+        });
+      });
     }).catch(function (e) {
       showError(e && e.message ? e.message : e);
     });
@@ -265,6 +314,48 @@ class MermaidRuntime {
     document.body.appendChild(d);
     requestAnimationFrame(report);
   }
+  window.__mermaidPng = null;
+  function updatePng() {
+    var svg = document.querySelector('#c svg');
+    if (!svg) return;
+    var nw = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width ? svg.viewBox.baseVal.width : 0;
+    var nh = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.height ? svg.viewBox.baseVal.height : 0;
+    if (!nw || !nh) {
+      try { var b = svg.getBBox(); nw = b.width; nh = b.height; } catch (e) {}
+    }
+    if (!nw || !nh) {
+      var r = svg.getBoundingClientRect();
+      nw = r.width; nh = r.height;
+    }
+    if (!nw || !nh) return;
+    var scale = 2;
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(nw * scale);
+    canvas.height = Math.ceil(nh * scale);
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '$backgroundHex';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    var clone = svg.cloneNode(true);
+    clone.setAttribute('width', nw);
+    clone.setAttribute('height', nh);
+    clone.style.maxWidth = 'none';
+    clone.style.maxHeight = 'none';
+    clone.style.width = nw + 'px';
+    clone.style.height = nh + 'px';
+    var xml = new XMLSerializer().serializeToString(clone);
+    var blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var img = new Image();
+    img.onload = function() {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      window.__mermaidPng = canvas.toDataURL('image/png');
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
   try {
     mermaid.initialize({
       startOnLoad: false,
@@ -273,7 +364,12 @@ class MermaidRuntime {
     });
     mermaid.render('vmd', $codeJson).then(function (res) {
       document.getElementById('c').innerHTML = res.svg;
-      requestAnimationFrame(function () { requestAnimationFrame(report); });
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          report();
+          updatePng();
+        });
+      });
     }).catch(function (e) {
       showError(e && e.message ? e.message : e);
     });
@@ -419,6 +515,96 @@ class _MermaidViewState extends State<MermaidView> {
     return '#${value.toRadixString(16).padLeft(6, '0')}';
   }
 
+  bool _isExporting = false;
+
+  Future<void> _exportPng() async {
+    if (_controller == null || _isExporting) return;
+    setState(() => _isExporting = true);
+    try {
+      dynamic raw;
+      for (var i = 0; i < 20 && !_disposed; i++) {
+        raw = await _controller!.evaluateJavascript('window.__mermaidPng');
+        if (raw != null &&
+            raw.toString().trim() != 'null' &&
+            raw.toString().trim().isNotEmpty) {
+          break;
+        }
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (raw == null ||
+          raw.toString().trim() == 'null' ||
+          raw.toString().trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Diagram not ready for export yet.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+      var dataUrl = raw.toString().trim();
+      if (dataUrl.startsWith('"') && dataUrl.endsWith('"')) {
+        dataUrl = jsonDecode(dataUrl) as String;
+      }
+      final commaIdx = dataUrl.indexOf(',');
+      final base64Str = commaIdx != -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+      final bytes = base64Decode(base64Str);
+
+      final wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
+      if (wasAlwaysOnTop) {
+        await windowManager.setAlwaysOnTop(false);
+      }
+      String? savePath;
+      try {
+        savePath = await FilePicker.platform.saveFile(
+          dialogTitle: 'Export Mermaid Diagram to PNG',
+          fileName: 'mermaid-diagram.png',
+          type: FileType.custom,
+          allowedExtensions: ['png'],
+          lockParentWindow: true,
+        );
+      } finally {
+        if (wasAlwaysOnTop) {
+          await windowManager.setAlwaysOnTop(true);
+        }
+        await windowManager.focus();
+      }
+
+      if (savePath == null || !mounted) return;
+
+      if (!savePath.toLowerCase().endsWith('.png')) {
+        savePath = '$savePath.png';
+      }
+
+      final file = File(savePath);
+      await file.writeAsBytes(bytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved to $savePath'),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export PNG: $e'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red.shade800,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
   void _openFullscreen() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -496,6 +682,37 @@ class _MermaidViewState extends State<MermaidView> {
                         ),
                       ),
                     ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          iconSize: 18,
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          icon: _isExporting
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.download_rounded,
+                                  color: Colors.white,
+                                ),
+                          tooltip: 'Download diagram as PNG',
+                          onPressed: _isExporting ? null : _exportPng,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -533,6 +750,7 @@ class MermaidFullScreenPage extends StatefulWidget {
 class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
   WebViewController? _controller;
   bool _failed = false;
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -565,6 +783,94 @@ class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
     }
   }
 
+  Future<void> _exportPng() async {
+    if (_controller == null || _isExporting) return;
+    setState(() => _isExporting = true);
+    try {
+      dynamic raw;
+      for (var i = 0; i < 20; i++) {
+        raw = await _controller!.evaluateJavascript('window.__mermaidPng');
+        if (raw != null &&
+            raw.toString().trim() != 'null' &&
+            raw.toString().trim().isNotEmpty) {
+          break;
+        }
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (raw == null ||
+          raw.toString().trim() == 'null' ||
+          raw.toString().trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Diagram not ready for export yet.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+      var dataUrl = raw.toString().trim();
+      if (dataUrl.startsWith('"') && dataUrl.endsWith('"')) {
+        dataUrl = jsonDecode(dataUrl) as String;
+      }
+      final commaIdx = dataUrl.indexOf(',');
+      final base64Str = commaIdx != -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+      final bytes = base64Decode(base64Str);
+
+      final wasAlwaysOnTop = await windowManager.isAlwaysOnTop();
+      if (wasAlwaysOnTop) {
+        await windowManager.setAlwaysOnTop(false);
+      }
+      String? savePath;
+      try {
+        savePath = await FilePicker.platform.saveFile(
+          dialogTitle: 'Export Mermaid Diagram to PNG',
+          fileName: 'mermaid-diagram.png',
+          type: FileType.custom,
+          allowedExtensions: ['png'],
+          lockParentWindow: true,
+        );
+      } finally {
+        if (wasAlwaysOnTop) {
+          await windowManager.setAlwaysOnTop(true);
+        }
+        await windowManager.focus();
+      }
+
+      if (savePath == null || !mounted) return;
+
+      if (!savePath.toLowerCase().endsWith('.png')) {
+        savePath = '$savePath.png';
+      }
+
+      final file = File(savePath);
+      await file.writeAsBytes(bytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved to $savePath'),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export PNG: $e'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red.shade800,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
   @override
   void dispose() {
     try {
@@ -591,8 +897,8 @@ class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
                     ? _RawFallback(
                         code: widget.code,
                         foregroundColor: widget.foregroundColor,
-                                      fontScale: widget.fontScale,
-                                      codeFontFamily: widget.codeFontFamily,
+                        fontScale: widget.fontScale,
+                        codeFontFamily: widget.codeFontFamily,
                       )
                     : ValueListenableBuilder<bool>(
                         valueListenable: _controller!,
@@ -604,14 +910,45 @@ class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
               Positioned(
                 top: 8,
                 right: 8,
-                child: Material(
-                  color: Colors.black.withOpacity(0.45),
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    tooltip: 'Close (Esc)',
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!_failed && _controller != null) ...[
+                      Material(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          iconSize: 20,
+                          icon: _isExporting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.download_rounded,
+                                  color: Colors.white,
+                                ),
+                          tooltip: 'Download diagram as PNG',
+                          onPressed: _isExporting ? null : _exportPng,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Material(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      shape: const CircleBorder(),
+                      child: IconButton(
+                        iconSize: 20,
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        tooltip: 'Close (Esc)',
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
