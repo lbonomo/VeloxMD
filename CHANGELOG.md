@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.11 - 2026-10-07
+
+### ✨ Features
+- **Mermaid Diagram PNG Export**:
+  - Added a download button in the top-right corner of both inline and fullscreen Mermaid views to export diagrams as high-resolution PNG images.
+  - Automatically captures the rendered SVG using an HTML5 canvas in the CEF runtime matching the document's theme and background.
+  - Prompts with the native file picker to save diagrams cleanly and offline.
+
 ## 1.0.10 - 2026-09-25
 
 ### ✨ Features
