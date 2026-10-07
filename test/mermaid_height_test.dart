@@ -115,4 +115,24 @@ void main() {
       expect(html, contains('ty = (vh - nh * scale) / 2;'));
     });
   });
+
+  group('mermaid png export script', () {
+    test('inline document defines window.__getMermaidPng', () {
+      final html = inlineHtml();
+      expect(html, contains('window.__getMermaidPng = function()'));
+      expect(html, contains("canvas.toDataURL('image/png')"));
+    });
+
+    test('fullscreen document defines window.__getMermaidPng', () {
+      final html = MermaidRuntime.buildHtml(
+        code: code,
+        theme: 'dark',
+        backgroundHex: '#000000',
+        foregroundHex: '#ffffff',
+        fitViewport: true,
+      );
+      expect(html, contains('window.__getMermaidPng = function()'));
+      expect(html, contains("canvas.toDataURL('image/png')"));
+    });
+  });
 }
