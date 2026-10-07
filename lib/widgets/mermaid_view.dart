@@ -202,24 +202,10 @@ class MermaidRuntime {
   });
   stage.addEventListener('dblclick', function () { fit(); });
   window.addEventListener('resize', function () { fit(); });
-  try {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: $themeJson,
-      securityLevel: 'strict'
-    });
-    mermaid.render('vmd', $codeJson).then(function (res) {
-      document.getElementById('c').innerHTML = res.svg;
-      requestAnimationFrame(function () { requestAnimationFrame(fit); });
-    }).catch(function (e) {
-      showError(e && e.message ? e.message : e);
-    });
-  } catch (e) {
-    showError(e);
-  }
-  window.__getMermaidPng = function() {
+  window.__mermaidPng = null;
+  function updatePng() {
     var svg = document.querySelector('#c svg');
-    if (!svg) return null;
+    if (!svg) return;
     var nw = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width ? svg.viewBox.baseVal.width : 0;
     var nh = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.height ? svg.viewBox.baseVal.height : 0;
     if (!nw || !nh) {
@@ -229,7 +215,7 @@ class MermaidRuntime {
       var r = svg.getBoundingClientRect();
       nw = r.width; nh = r.height;
     }
-    if (!nw || !nh) return null;
+    if (!nw || !nh) return;
     var scale = 2;
     var canvas = document.createElement('canvas');
     canvas.width = Math.ceil(nw * scale);
@@ -248,19 +234,36 @@ class MermaidRuntime {
     var blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var img = new Image();
-    return new Promise(function(resolve) {
-      img.onload = function() {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.onerror = function() {
-        URL.revokeObjectURL(url);
-        resolve(null);
-      };
-      img.src = url;
+    img.onload = function() {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      window.__mermaidPng = canvas.toDataURL('image/png');
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+  try {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: $themeJson,
+      securityLevel: 'strict'
     });
-  };
+    mermaid.render('vmd', $codeJson).then(function (res) {
+      document.getElementById('c').innerHTML = res.svg;
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          fit();
+          updatePng();
+        });
+      });
+    }).catch(function (e) {
+      showError(e && e.message ? e.message : e);
+    });
+  } catch (e) {
+    showError(e);
+  }
 </script>
 </body>
 </html>'''
@@ -311,24 +314,10 @@ class MermaidRuntime {
     document.body.appendChild(d);
     requestAnimationFrame(report);
   }
-  try {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: $themeJson,
-      securityLevel: 'strict'
-    });
-    mermaid.render('vmd', $codeJson).then(function (res) {
-      document.getElementById('c').innerHTML = res.svg;
-      requestAnimationFrame(function () { requestAnimationFrame(report); });
-    }).catch(function (e) {
-      showError(e && e.message ? e.message : e);
-    });
-  } catch (e) {
-    showError(e);
-  }
-  window.__getMermaidPng = function() {
+  window.__mermaidPng = null;
+  function updatePng() {
     var svg = document.querySelector('#c svg');
-    if (!svg) return null;
+    if (!svg) return;
     var nw = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width ? svg.viewBox.baseVal.width : 0;
     var nh = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.height ? svg.viewBox.baseVal.height : 0;
     if (!nw || !nh) {
@@ -338,7 +327,7 @@ class MermaidRuntime {
       var r = svg.getBoundingClientRect();
       nw = r.width; nh = r.height;
     }
-    if (!nw || !nh) return null;
+    if (!nw || !nh) return;
     var scale = 2;
     var canvas = document.createElement('canvas');
     canvas.width = Math.ceil(nw * scale);
@@ -357,19 +346,36 @@ class MermaidRuntime {
     var blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var img = new Image();
-    return new Promise(function(resolve) {
-      img.onload = function() {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.onerror = function() {
-        URL.revokeObjectURL(url);
-        resolve(null);
-      };
-      img.src = url;
+    img.onload = function() {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      window.__mermaidPng = canvas.toDataURL('image/png');
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+  try {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: $themeJson,
+      securityLevel: 'strict'
     });
-  };
+    mermaid.render('vmd', $codeJson).then(function (res) {
+      document.getElementById('c').innerHTML = res.svg;
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          report();
+          updatePng();
+        });
+      });
+    }).catch(function (e) {
+      showError(e && e.message ? e.message : e);
+    });
+  } catch (e) {
+    showError(e);
+  }
 </script>
 </body>
 </html>''';
@@ -515,10 +521,19 @@ class _MermaidViewState extends State<MermaidView> {
     if (_controller == null || _isExporting) return;
     setState(() => _isExporting = true);
     try {
-      final raw = await _controller!.evaluateJavascript(
-        'window.__getMermaidPng ? window.__getMermaidPng() : null',
-      );
-      if (raw == null) {
+      dynamic raw;
+      for (var i = 0; i < 20 && !_disposed; i++) {
+        raw = await _controller!.evaluateJavascript('window.__mermaidPng');
+        if (raw != null &&
+            raw.toString().trim() != 'null' &&
+            raw.toString().trim().isNotEmpty) {
+          break;
+        }
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (raw == null ||
+          raw.toString().trim() == 'null' ||
+          raw.toString().trim().isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -772,10 +787,19 @@ class _MermaidFullScreenPageState extends State<MermaidFullScreenPage> {
     if (_controller == null || _isExporting) return;
     setState(() => _isExporting = true);
     try {
-      final raw = await _controller!.evaluateJavascript(
-        'window.__getMermaidPng ? window.__getMermaidPng() : null',
-      );
-      if (raw == null) {
+      dynamic raw;
+      for (var i = 0; i < 20; i++) {
+        raw = await _controller!.evaluateJavascript('window.__mermaidPng');
+        if (raw != null &&
+            raw.toString().trim() != 'null' &&
+            raw.toString().trim().isNotEmpty) {
+          break;
+        }
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (raw == null ||
+          raw.toString().trim() == 'null' ||
+          raw.toString().trim().isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

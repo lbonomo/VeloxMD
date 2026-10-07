@@ -117,13 +117,14 @@ void main() {
   });
 
   group('mermaid png export script', () {
-    test('inline document defines window.__getMermaidPng', () {
+    test('inline document defines window.__mermaidPng and updatePng', () {
       final html = inlineHtml();
-      expect(html, contains('window.__getMermaidPng = function()'));
+      expect(html, contains('window.__mermaidPng = null;'));
+      expect(html, contains('function updatePng()'));
       expect(html, contains("canvas.toDataURL('image/png')"));
     });
 
-    test('fullscreen document defines window.__getMermaidPng', () {
+    test('fullscreen document defines window.__mermaidPng and updatePng', () {
       final html = MermaidRuntime.buildHtml(
         code: code,
         theme: 'dark',
@@ -131,7 +132,8 @@ void main() {
         foregroundHex: '#ffffff',
         fitViewport: true,
       );
-      expect(html, contains('window.__getMermaidPng = function()'));
+      expect(html, contains('window.__mermaidPng = null;'));
+      expect(html, contains('function updatePng()'));
       expect(html, contains("canvas.toDataURL('image/png')"));
     });
   });
