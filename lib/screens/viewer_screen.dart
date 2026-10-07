@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -232,8 +233,9 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
 
       final statsFuture =
           Future.microtask(() => DocumentStats.fromMarkdown(content));
-      final tocFuture =
-          Future.microtask(() => TocEntry.fromMarkdown(content));
+      // Full Markdown parse (must match what the viewer renders): run it off
+      // the UI thread so large documents do not freeze the window.
+      final tocFuture = compute(computeTocEntries, content);
 
       final stats = await statsFuture;
       final tocEntries = await tocFuture;
@@ -398,8 +400,9 @@ class _ViewerScreenState extends State<ViewerScreen> with WindowListener {
       final content = await FileService.readMarkdown(_filePath!);
       final statsFuture =
           Future.microtask(() => DocumentStats.fromMarkdown(content));
-      final tocFuture =
-          Future.microtask(() => TocEntry.fromMarkdown(content));
+      // Full Markdown parse (must match what the viewer renders): run it off
+      // the UI thread so large documents do not freeze the window.
+      final tocFuture = compute(computeTocEntries, content);
 
       final stats = await statsFuture;
       final tocEntries = await tocFuture;
@@ -1018,8 +1021,6 @@ DocumentStats computeDocumentStats(String content) =>
 
 List<TocEntry> computeTocEntries(String content) =>
     TocEntry.fromMarkdown(content);
-
-
 
 class _BackIntent extends Intent {
   const _BackIntent();
