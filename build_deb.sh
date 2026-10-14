@@ -61,6 +61,15 @@ mkdir -p "$INSTALL_DIR" "$BIN_DIR" "$DESKTOP_DIR" "$ICON_DIR" "$DOC_DIR"
 # Copy Flutter bundle into /usr/lib/veloxmd/
 cp -r "$BUNDLE_DIR/." "$INSTALL_DIR/"
 
+# Strip debug symbols (libcef.so ships with ~1.2 GB of debug info)
+if command -v strip >/dev/null 2>&1; then
+  echo "▶ Stripping debug symbols…"
+  find "$INSTALL_DIR" -type f \( -name "*.so" -o -name "*.so.*" \) -exec strip --strip-unneeded {} \;
+  strip --strip-unneeded "$INSTALL_DIR/$APP_NAME" 2>/dev/null || true
+else
+  echo "⚠ 'strip' not found (install binutils); package will be much larger."
+fi
+
 # Wrapper script in /usr/bin so the binary is on PATH
 cat > "$BIN_DIR/$APP_NAME" <<EOF
 #!/bin/sh
