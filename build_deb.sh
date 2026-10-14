@@ -99,6 +99,60 @@ else
     > "$ICON_DIR/$APP_NAME.png"
 fi
 
+# Screenshots — bundle docs/screenshots/*.png and expose them via AppStream.
+# AppStream only accepts http(s) URLs in <image>, so the metainfo points to
+# the same files on GitHub (override with SCREENSHOT_BASE_URL).
+SCREENSHOT_SRC="$SCRIPT_DIR/docs/screenshots"
+SCREENSHOT_DIR="$PKGROOT/usr/share/$APP_NAME/screenshots"
+SCREENSHOT_BASE_URL="${SCREENSHOT_BASE_URL:-https://raw.githubusercontent.com/lbonomo/VeloxMD/main/docs/screenshots}"
+METAINFO_DIR="$PKGROOT/usr/share/metainfo"
+mkdir -p "$METAINFO_DIR"
+
+SCREENSHOTS_XML=""
+if compgen -G "$SCREENSHOT_SRC/*.png" > /dev/null; then
+  mkdir -p "$SCREENSHOT_DIR"
+  first=1
+  for img in "$SCREENSHOT_SRC"/*.png; do
+    name="$(basename "$img")"
+    cp "$img" "$SCREENSHOT_DIR/$name"
+    caption="${name%.png}"; caption="${caption//-/ }"
+    if [[ $first -eq 1 ]]; then type=' type="default"'; first=0; else type=''; fi
+    SCREENSHOTS_XML+="    <screenshot${type}>
+      <caption>${caption}</caption>
+      <image>${SCREENSHOT_BASE_URL}/${name}</image>
+    </screenshot>
+"
+  done
+  echo "  Screenshots: $(ls "$SCREENSHOT_DIR" | wc -l) bundled"
+else
+  echo "  ⚠ No screenshots found in $SCREENSHOT_SRC"
+fi
+
+cat > "$METAINFO_DIR/$APP_NAME.metainfo.xml" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>$APP_NAME</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>VeloxMD</name>
+  <summary>Fast Markdown viewer for Linux desktop</summary>
+  <description>
+    <p>VeloxMD is a lightweight, keyboard-friendly Markdown viewer built with
+    Flutter. It supports live file reload, a table of contents panel,
+    drag-and-drop, dark/light theme, and opens .md files directly from the
+    file manager.</p>
+  </description>
+  <launchable type="desktop-id">$APP_NAME.desktop</launchable>
+  <url type="homepage">https://github.com/lbonomo/VeloxMD</url>
+  <screenshots>
+${SCREENSHOTS_XML}  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="$APP_VERSION" date="$(date -u +%Y-%m-%d)"/>
+  </releases>
+</component>
+EOF
+
 # Minimal changelog (required by lintian)
 cat > "$DOC_DIR/changelog.Debian.gz" /dev/null || true
 gzip -9 -c /dev/null > "$DOC_DIR/changelog.Debian.gz"
