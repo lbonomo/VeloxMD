@@ -65,6 +65,15 @@ mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/lib" "$APPDIR/usr/share/icons/hicolor/25
 # Copy Flutter bundle
 cp -r "$BUNDLE_DIR/." "$APPDIR/usr/"
 
+# Strip debug symbols (libcef.so ships with ~1.2 GB of debug info)
+if command -v strip >/dev/null 2>&1; then
+  echo "▶ Stripping debug symbols…"
+  find "$APPDIR/usr" -type f \( -name "*.so" -o -name "*.so.*" \) -exec strip --strip-unneeded {} \;
+  strip --strip-unneeded "$APPDIR/usr/${APP_NAME}" 2>/dev/null || true
+else
+  echo "⚠ 'strip' not found (install binutils); AppImage will be much larger."
+fi
+
 # Symlink the binary to the standard location
 ln -sf "../${APP_NAME}" "$APPDIR/usr/bin/${APP_NAME}"
 
