@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.1.1 - 2026-11-06
+
+### 🐛 Fixes
+- Fix Mermaid rendering in a second app instance.
+
 ## 1.1.0 - 2026-10-13
 
 ### ✨ Features
