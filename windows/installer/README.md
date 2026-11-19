@@ -74,8 +74,8 @@ The `veloxmd.iss` script includes:
 The GitHub Actions workflow `.github/workflows/build-windows.yml` is prepared for free open-source code signing via **SignPath Foundation** (`signpath/github-action-submit-signing-request@v3`).
 
 ### Prerequisites before enabling
-1. Add an OSI-approved `LICENSE` file in the repository root.
-2. Publish a Code Signing Policy in the repository (required by SignPath Foundation).
+1. OSI-approved [LICENSE](../../LICENSE) in the repository root (MIT).
+2. Public [Code Signing Policy](../../CODE_SIGNING_POLICY.md) published in the repository.
 3. Apply and get approved at [SignPath Foundation](https://signpath.org/), then configure a project (e.g., slug `veloxmd`), an artifact configuration for PE `.exe` installers, and a signing policy (e.g., slug `release-signing`).
 
 ### GitHub Repository Configuration

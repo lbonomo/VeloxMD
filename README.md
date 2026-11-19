@@ -278,4 +278,8 @@ update-desktop-database ~/.local/share/applications/
 
 ## License
 
-See the repository for license details.
+VeloxMD is licensed under the [MIT License](LICENSE).
+
+### Code Signing Policy
+
+Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/). See the [Code Signing Policy](CODE_SIGNING_POLICY.md) for details.
