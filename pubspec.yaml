@@ -35,6 +35,8 @@ dev_dependencies:
 msix_config:
   display_name: VeloxMD
   publisher_display_name: Lucas Bonomo
+  identity_name: LucasBonomo.VeloxMD
+  publisher: CN=8D59B12E-EAA9-4F45-912B-B5D7ED20635B
   logo_path: assets/icon.png
   architecture: x64
   capabilities: internetClient

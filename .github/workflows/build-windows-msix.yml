@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       store:
-        description: "Build Store package (--store). Requires MSIX_IDENTITY_NAME and MSIX_PUBLISHER variables."
+        description: "Build Microsoft Store package (--store). Disable for test-signed QA package."
         type: boolean
         required: false
         default: true
@@ -16,7 +16,6 @@ permissions:
 
 jobs:
   build-msix:
-    if: ${{ github.event_name == 'workflow_dispatch' || (vars.MSIX_IDENTITY_NAME != '' && vars.MSIX_PUBLISHER != '') }}
     runs-on: windows-latest
 
     steps:
@@ -42,23 +41,24 @@ jobs:
           INPUT_STORE: ${{ inputs.store }}
           IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
           PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
-          PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME || 'Lucas Bonomo' }}
+          PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
         run: |
-          $useStore = ($env:INPUT_STORE -ne 'false') -and `
-                      (-not [string]::IsNullOrWhiteSpace($env:IDENTITY_NAME)) -and `
-                      (-not [string]::IsNullOrWhiteSpace($env:PUBLISHER))
-
-          if ($useStore) {
+          if ($env:INPUT_STORE -ne 'false') {
             Write-Host "Building Microsoft Store MSIX package..."
-            dart run msix:create `
-              --store `
-              --build-windows false `
-              --identity-name "$env:IDENTITY_NAME" `
-              --publisher "$env:PUBLISHER" `
-              --publisher-display-name "$env:PUBLISHER_DISPLAY_NAME"
+            $msixArgs = @("run", "msix:create", "--store", "--build-windows", "false")
+            if (-not [string]::IsNullOrWhiteSpace($env:IDENTITY_NAME)) {
+              $msixArgs += @("--identity-name", $env:IDENTITY_NAME)
+            }
+            if (-not [string]::IsNullOrWhiteSpace($env:PUBLISHER)) {
+              $msixArgs += @("--publisher", $env:PUBLISHER)
+            }
+            if (-not [string]::IsNullOrWhiteSpace($env:PUBLISHER_DISPLAY_NAME)) {
+              $msixArgs += @("--publisher-display-name", $env:PUBLISHER_DISPLAY_NAME)
+            }
+            & dart @msixArgs
           }
           else {
-            Write-Host "::warning::MSIX_IDENTITY_NAME / MSIX_PUBLISHER not set (or store=false). Building test-signed MSIX for local QA only."
+            Write-Host "Building test-signed MSIX for local QA..."
             dart run msix:create --build-windows false
           }
 

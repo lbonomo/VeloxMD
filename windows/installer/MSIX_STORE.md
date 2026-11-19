@@ -16,15 +16,13 @@ Output: `build/windows/msix/veloxmd.msix`
 
 ## Microsoft Store Build (GitHub Actions)
 
-1. Register a free developer account at https://storedeveloper.microsoft.com and reserve the app name (`VeloxMD`) in **Microsoft Partner Center** (`New product → MSIX or PWA app`).
-2. Under **Product management → Product identity**, copy:
-   - `Package/Identity/Name`
-   - `Package/Identity/Publisher` (`CN=...`)
-   - `Package/Properties/PublisherDisplayName`
-3. Add those values as GitHub Repository **Variables** (**Settings → Secrets and variables → Actions → Variables**):
-   - `MSIX_IDENTITY_NAME`
-   - `MSIX_PUBLISHER`
-   - `MSIX_PUBLISHER_DISPLAY_NAME` *(optional, defaults to `Lucas Bonomo`)*
-4. Run the **Build Windows MSIX (Microsoft Store)** workflow (or publish a new release), download the `veloxmd-windows-msix` workflow artifact, and upload `veloxmd.msix` in Partner Center under **Packages**.
+`pubspec.yaml` (`msix_config`) is configured with the Microsoft Partner Center identity:
+- `identity_name`: `LucasBonomo.VeloxMD`
+- `publisher`: `CN=8D59B12E-EAA9-4F45-912B-B5D7ED20635B`
+- `publisher_display_name`: `Lucas Bonomo`
+
+*(Optional: you can override these at build time with GitHub Repository Variables `MSIX_IDENTITY_NAME`, `MSIX_PUBLISHER`, and `MSIX_PUBLISHER_DISPLAY_NAME`.)*
+
+Run the **Build Windows MSIX (Microsoft Store)** workflow (or publish a new release), download the `veloxmd-windows-msix` workflow artifact, and upload `veloxmd.msix` in Partner Center under **Packages**.
 
 > Note: Packages built with `--store` are intentionally unsigned; Microsoft signs the `.msix` with its own certificate during Store certification.
