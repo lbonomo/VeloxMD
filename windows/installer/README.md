@@ -58,16 +58,35 @@ The `veloxmd.iss` script includes:
   - Repository: https://github.com/lbonomo/VeloxMD
 
 - **Installation:**
-  - Default directory: `Program Files\VeloxMD`
+  - Per-user installation by default (`PrivilegesRequired=lowest`, no UAC prompt; installs to `%LocalAppData%\Programs\VeloxMD`, or system-wide with `/ALLUSERS`)
   - Creates Start Menu shortcuts
   - Optional desktop shortcut
   - English and Spanish language support
 
 - **Features:**
   - 64-bit architecture
-  - License file included
   - Uninstaller support
   - Auto-launch after installation
+  - Optional SignPath.io code signing in CI
+
+## Code Signing (SignPath Foundation)
+
+The GitHub Actions workflow `.github/workflows/build-windows.yml` is prepared for free open-source code signing via **SignPath Foundation** (`signpath/github-action-submit-signing-request@v3`).
+
+### Prerequisites before enabling
+1. Add an OSI-approved `LICENSE` file in the repository root.
+2. Publish a Code Signing Policy in the repository (required by SignPath Foundation).
+3. Apply and get approved at [SignPath Foundation](https://signpath.org/), then configure a project (e.g., slug `veloxmd`), an artifact configuration for PE `.exe` installers, and a signing policy (e.g., slug `release-signing`).
+
+### GitHub Repository Configuration
+In **Settings → Secrets and variables → Actions**, configure:
+
+- **Secret:**
+  - `SIGNPATH_API_TOKEN` — API token for the SignPath CI user.
+- **Variables:**
+  - `SIGNPATH_ORGANIZATION_ID` — Your SignPath organization GUID. *(When omitted, the workflow logs a warning and uploads the unsigned installer.)*
+  - `SIGNPATH_PROJECT_SLUG` *(optional, defaults to `veloxmd`)*
+  - `SIGNPATH_SIGNING_POLICY_SLUG` *(optional, defaults to `release-signing`)*
 
 ## Customization
 

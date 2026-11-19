@@ -14,6 +14,8 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 ArchitecturesInstallIn64BitMode=x64
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=commandline
 OutputDir=..\..\build\windows\installer
 OutputBaseFilename={#MyOutputBaseFilename}
 Compression=lzma
@@ -41,4 +43,4 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Messages]
-BeveledLabel=VeloxMD v{#MyAppVersion} - Fast Markdown Viewer for Linux
+BeveledLabel=VeloxMD v{#MyAppVersion} - Fast Markdown Viewer
