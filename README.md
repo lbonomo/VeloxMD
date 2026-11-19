@@ -73,6 +73,8 @@ The easiest way to run VeloxMD is to download a ready-made version.
 2. Download the file named `veloxmd-setup-windows-x64-v...exe`.
 3. Run it and follow the installer.
 
+> Free code signing for Windows installers provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/) (see [Code Signing Policy](CODE_SIGNING_POLICY.md)).
+
 ### Linux
 
 Prebuilt Linux packages (`.deb` / AppImage) are published on the
