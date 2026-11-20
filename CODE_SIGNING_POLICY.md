@@ -15,4 +15,4 @@ Only artifacts produced directly by the repository's GitHub Actions release work
 
 ## Privacy Policy
 
-VeloxMD operates completely offline. It does not collect, store, or transmit personal data, usage analytics, or telemetry to any server.
+VeloxMD operates completely offline. It does not collect, store, or transmit personal data, usage analytics, or telemetry to any server. See the full [Privacy Policy](PRIVACY_POLICY.md) ([web version](https://lbonomo.github.io/VeloxMD/privacy.html)).

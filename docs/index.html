@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VeloxMD — Fast, Offline Markdown Viewer</title>
+    <meta
+      name="description"
+      content="VeloxMD is a fast, private, offline desktop Markdown viewer for Linux and Windows with Mermaid diagrams, themes, search, and PDF export."
+    />
+    <link rel="icon" type="image/png" href="./icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container nav-bar">
+        <a class="brand" href="./index.html">
+          <img src="./icon.png" alt="VeloxMD logo" width="32" height="32" />
+          <span>VeloxMD</span>
+        </a>
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="#features">Features</a>
+          <a href="#screenshots">Screenshots</a>
+          <a href="#download">Download</a>
+          <a href="./privacy.html">Privacy Policy</a>
+          <a href="https://github.com/lbonomo/VeloxMD">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <img
+          class="hero-icon"
+          src="./icon.png"
+          alt="VeloxMD application icon"
+          width="96"
+          height="96"
+        />
+        <h1>VeloxMD</h1>
+        <p>
+          A fast, clean, offline desktop Markdown viewer for Windows and Linux —
+          with live reload, Mermaid diagrams, light/dark themes, and PDF export.
+        </p>
+        <div class="actions">
+          <a
+            class="button primary"
+            href="https://github.com/lbonomo/VeloxMD/releases/latest"
+          >
+            Download Latest Release
+          </a>
+          <a class="button" href="https://github.com/lbonomo/VeloxMD">
+            View Source on GitHub
+          </a>
+        </div>
+      </section>
+
+      <section id="features" class="section">
+        <h2>Why VeloxMD</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Instant &amp; Lightweight</h3>
+            <p>
+              Opens <code>.md</code>, <code>.markdown</code>, <code>.mdc</code>,
+              and <code>.txt</code> files right away with automatic live reload
+              when files change on disk.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Mermaid Diagrams</h3>
+            <p>
+              Renders flowcharts and sequence diagrams directly inside your
+              documents with full-screen zoom and pan inspection.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Navigation &amp; Search</h3>
+            <p>
+              Automatic table of contents, in-document search, link history
+              navigation, and customizable keyboard shortcuts.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Readable by Design</h3>
+            <p>
+              Switch between light and dark themes, adjust font scaling, or
+              enable the bundled OpenDyslexic font in one click.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Private &amp; Offline</h3>
+            <p>
+              Everything runs locally on your computer. No accounts, no tracking,
+              and no telemetry.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Open Source (MIT)</h3>
+            <p>
+              Built with Flutter and released under the permissive MIT License.
+              Contributions and issues are welcome on GitHub.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="screenshots" class="section">
+        <h2>Screenshots</h2>
+        <div class="gallery">
+          <figure>
+            <img
+              src="./screenshots/screenshot-01.png"
+              alt="VeloxMD showing rendered Markdown with an inline Mermaid flowchart"
+              loading="lazy"
+            />
+            <figcaption>Rendered Markdown with inline Mermaid diagram</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="./screenshots/dark-mode.png"
+              alt="VeloxMD in dark mode"
+              loading="lazy"
+            />
+            <figcaption>Dark theme with clean typography</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="./screenshots/diagram-dark.png"
+              alt="Mermaid sequence diagram in dark theme"
+              loading="lazy"
+            />
+            <figcaption>Sequence diagrams in dark mode</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="./screenshots/OpenDyslexic.png"
+              alt="VeloxMD using the OpenDyslexic font"
+              loading="lazy"
+            />
+            <figcaption>Optional OpenDyslexic accessibility font</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="download" class="section">
+        <h2>Download &amp; Code Signing</h2>
+        <p>
+          Prebuilt installers and packages for <strong>Windows</strong> (<code>.exe</code>)
+          and <strong>Linux</strong> (<code>.deb</code> and <code>AppImage</code>)
+          are published on
+          <a href="https://github.com/lbonomo/VeloxMD/releases">GitHub Releases</a>.
+        </p>
+        <div class="notice">
+          <strong>Code Signing Policy:</strong> Free code signing for Windows
+          installers provided by
+          <a href="https://signpath.io/">SignPath.io</a>, certificate by
+          <a href="https://signpath.org/">SignPath Foundation</a>. See the
+          <a
+            href="https://github.com/lbonomo/VeloxMD/blob/main/CODE_SIGNING_POLICY.md"
+          >
+            Code Signing Policy
+          </a>
+          for details.
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-row">
+        <span>VeloxMD &copy; 2026 Lucas Bonomo &middot; MIT License</span>
+        <span>
+          <a href="./privacy.html">Privacy Policy</a> &middot;
+          <a
+            href="https://github.com/lbonomo/VeloxMD/blob/main/CODE_SIGNING_POLICY.md"
+          >
+            Code Signing Policy
+          </a>
+          &middot;
+          <a href="https://github.com/lbonomo/VeloxMD/issues">Support</a>
+        </span>
+      </div>
+    </footer>
+  </body>
+</html>

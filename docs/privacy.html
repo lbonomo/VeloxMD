@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy — VeloxMD</title>
+    <meta
+      name="description"
+      content="Privacy Policy for VeloxMD desktop Markdown viewer."
+    />
+    <link rel="icon" type="image/png" href="./icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container nav-bar">
+        <a class="brand" href="./index.html">
+          <img src="./icon.png" alt="VeloxMD logo" width="32" height="32" />
+          <span>VeloxMD</span>
+        </a>
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="./index.html">Home</a>
+          <a href="./privacy.html" aria-current="page">Privacy Policy</a>
+          <a href="https://github.com/lbonomo/VeloxMD">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container policy-doc">
+      <h1>Privacy Policy for VeloxMD</h1>
+      <p class="meta">
+        <strong>Last updated:</strong> November 20, 2026 &middot;
+        <strong>Developer:</strong> Lucas Bonomo &middot;
+        <strong>License:</strong> MIT
+      </p>
+
+      <h2>1. Overview</h2>
+      <p>
+        VeloxMD is an open-source, offline-first desktop Markdown viewer.
+        <strong>
+          VeloxMD does not collect, store, sell, or transmit personal data,
+          usage analytics, crash reports, or telemetry.
+        </strong>
+      </p>
+
+      <h2>2. Local Files and Preferences</h2>
+      <ul>
+        <li>
+          <strong>Documents:</strong> Markdown, <code>.mdc</code>, and plain
+          text files opened in VeloxMD are processed strictly locally on your
+          device and are never uploaded to any remote server.
+        </li>
+        <li>
+          <strong>Settings:</strong> User preferences (theme, font size,
+          OpenDyslexic toggle, and local <code>keybindings.json</code> /
+          <code>fonts.json</code> files) are stored only on your local machine.
+        </li>
+      </ul>
+
+      <h2>3. Network Access</h2>
+      <p>
+        VeloxMD operates offline by default. Network connections happen only
+        when explicitly triggered by you:
+      </p>
+      <ul>
+        <li>
+          <strong>Manual Update Check:</strong> Selecting
+          <em>Check for updates</em> in the About dialog sends a single
+          read-only HTTPS GET request to the public GitHub Releases API
+          (<code>https://api.github.com/repos/lbonomo/VeloxMD/releases/latest</code>)
+          to check whether a newer release exists. No personal identifiers or
+          telemetry are transmitted by VeloxMD.
+        </li>
+        <li>
+          <strong>External Links:</strong> Clicking an external link inside a
+          document or the About dialog opens that URL in your system's default
+          web browser.
+        </li>
+      </ul>
+
+      <h2>4. Distribution Platforms</h2>
+      <p>
+        When you download or install VeloxMD via the
+        <strong>Microsoft Store</strong> or <strong>GitHub Releases</strong>,
+        those distribution platforms may process download or diagnostic metadata
+        under their own privacy policies.
+      </p>
+
+      <h2>5. Contact</h2>
+      <p>
+        If you have any questions about this Privacy Policy, please open an
+        issue on GitHub at
+        <a href="https://github.com/lbonomo/VeloxMD/issues">
+          github.com/lbonomo/VeloxMD/issues
+        </a>.
+      </p>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-row">
+        <span>VeloxMD &copy; 2026 Lucas Bonomo &middot; MIT License</span>
+        <span>
+          <a href="./index.html">Home</a> &middot;
+          <a href="https://github.com/lbonomo/VeloxMD">GitHub Repository</a>
+        </span>
+      </div>
+    </footer>
+  </body>
+</html>
