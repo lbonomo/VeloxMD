@@ -282,6 +282,11 @@ update-desktop-database ~/.local/share/applications/
 
 VeloxMD is licensed under the [MIT License](LICENSE).
 
+### Privacy Policy & Website
+
+* Project site: https://lbonomo.github.io/VeloxMD/
+* Privacy policy: [PRIVACY_POLICY.md](PRIVACY_POLICY.md) (web version: https://lbonomo.github.io/VeloxMD/privacy.html)
+
 ### Code Signing Policy
 
 Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/). See the [Code Signing Policy](CODE_SIGNING_POLICY.md) for details.
